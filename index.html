@@ -1295,6 +1295,38 @@ function refreshThumbs(lawKey, no){
   wireThumbRow(el);
 }
 
+// ---------- Force-plain-text paste for every editable note area ----------
+// Uses event delegation on document (always exists), so this is safe to attach
+// at the top level even for note areas that only appear later inside dynamically
+// rendered cards.
+document.addEventListener('paste', (e)=>{
+  const target = e.target;
+  if(!target || !target.classList || !target.classList.contains('note-area')) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  e.preventDefault();
+  const clipboard = e.clipboardData || window.clipboardData;
+  const text = clipboard ? clipboard.getData('text/plain') : '';
+  if(!text) return;
+  try{
+    document.execCommand('insertText', false, text);
+  }catch(err){
+    // fallback for browsers without execCommand support: manual insert at cursor
+    const sel = window.getSelection();
+    if(!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const lines = text.split('\n');
+    const frag = document.createDocumentFragment();
+    lines.forEach((line, i)=>{
+      frag.appendChild(document.createTextNode(line));
+      if(i < lines.length - 1) frag.appendChild(document.createElement('br'));
+    });
+    range.insertNode(frag);
+    sel.collapseToEnd();
+  }
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
 function wireFmtButtons(root){
   root.querySelectorAll('.fmt-btn').forEach(btn=>{
     if(btn._wired) return;

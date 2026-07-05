@@ -404,6 +404,47 @@
     background:var(--page-cream-2);
     border-left:3px solid var(--gold);
   }
+  .pdf-preview-box{
+    height:420px;
+    border:1.5px solid var(--rule);
+    border-left:3px solid var(--gold);
+    border-radius:6px;
+    overflow:hidden;
+    background:#525659;
+    position:relative;
+  }
+  .pdf-preview-box iframe{
+    width:100%;
+    height:100%;
+    border:none;
+    display:block;
+  }
+  .pdf-open-newtab{
+    position:absolute;
+    bottom:8px;
+    right:8px;
+    background:rgba(0,0,0,0.65);
+    color:#fff;
+    font-size:11px;
+    font-family:'Noto Sans TC',sans-serif;
+    padding:5px 10px;
+    border-radius:14px;
+    text-decoration:none;
+  }
+  .pdf-open-newtab:hover{background:rgba(0,0,0,0.85);}
+  .pdf-loading-msg{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:13px; font-family:'Noto Sans TC',sans-serif;
+  }
+  .pdf-upload-row{display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;}
+  .pdf-upload-btn{
+    font-size:12px; font-weight:700; color:var(--ink-soft);
+    background:#fff; border:1px solid var(--rule); border-radius:5px;
+    padding:4px 9px; cursor:pointer; line-height:1;
+  }
+  .pdf-upload-btn:hover{border-color:var(--gold); color:var(--ink);}
+  .pdf-upload-btn.remove-pdf{color:var(--seal-red); border-color:var(--seal-red-soft);}
   .note-area{
     width:100%;
     min-height:90px;
@@ -1078,6 +1119,89 @@ async function saveImages(lawKey, no, arr){
   }catch(e){ /* keep local cache even if persistence fails */ }
 }
 
+// ---------- Editable-original PDF preview (chunked storage to stay under 1MB/doc) ----------
+const PDF_CHUNK_SIZE = 700000; // characters per chunk, safely under Firestore's 1MB/doc limit
+const pdfMetaCache = {};   // lawKey -> { no: {filename, chunkCount} }
+const pdfMetaLoaded = {};  // lawKey -> Promise
+const pdfDataCache = {};   // lawKey -> { no: dataURL string }  (reconstructed on demand)
+
+function pdfMetaKeyPrefix(lawKey){ return `pdfmeta::${lawKey}::`; }
+function pdfChunkKeyPrefix(lawKey, no){ return `pdfchunk::${lawKey}::${no}::`; }
+
+function ensurePdfMetaLoaded(lawKey){
+  if(pdfMetaLoaded[lawKey]) return pdfMetaLoaded[lawKey];
+  pdfMetaCache[lawKey] = pdfMetaCache[lawKey] || {};
+  pdfMetaLoaded[lawKey] = (async ()=>{
+    try{
+      const prefix = pdfMetaKeyPrefix(lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            pdfMetaCache[lawKey][k.slice(prefix.length)] = JSON.parse(res.value);
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return pdfMetaLoaded[lawKey];
+}
+
+function getPdfMeta(lawKey, no){
+  return (pdfMetaCache[lawKey] && pdfMetaCache[lawKey][no]) || null;
+}
+
+async function loadPdfData(lawKey, no){
+  pdfDataCache[lawKey] = pdfDataCache[lawKey] || {};
+  if(pdfDataCache[lawKey][no]) return pdfDataCache[lawKey][no];
+  const meta = getPdfMeta(lawKey, no);
+  if(!meta) return null;
+  const prefix = pdfChunkKeyPrefix(lawKey, no);
+  let combined = '';
+  for(let i=0;i<meta.chunkCount;i++){
+    const res = await window.storage.get(prefix + i, false);
+    combined += (res && res.value) || '';
+  }
+  pdfDataCache[lawKey][no] = combined;
+  return combined;
+}
+
+async function savePdfFile(lawKey, no, file, onProgress){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const chunkCount = Math.ceil(dataUrl.length / PDF_CHUNK_SIZE);
+  for(let i=0;i<chunkCount;i++){
+    const chunk = dataUrl.slice(i*PDF_CHUNK_SIZE, (i+1)*PDF_CHUNK_SIZE);
+    await window.storage.set(pdfChunkKeyPrefix(lawKey, no) + i, chunk, false);
+    if(onProgress) onProgress(i+1, chunkCount);
+  }
+  const meta = { filename: file.name, chunkCount };
+  await window.storage.set(pdfMetaKeyPrefix(lawKey) + no, JSON.stringify(meta), false);
+  pdfMetaCache[lawKey] = pdfMetaCache[lawKey] || {};
+  pdfMetaCache[lawKey][no] = meta;
+  pdfDataCache[lawKey] = pdfDataCache[lawKey] || {};
+  pdfDataCache[lawKey][no] = dataUrl;
+  return meta;
+}
+
+async function deletePdf(lawKey, no){
+  const meta = getPdfMeta(lawKey, no);
+  if(meta){
+    for(let i=0;i<meta.chunkCount;i++){
+      try{ await window.storage.delete(pdfChunkKeyPrefix(lawKey, no) + i, false); }catch(e){}
+    }
+  }
+  try{ await window.storage.delete(pdfMetaKeyPrefix(lawKey) + no, false); }catch(e){}
+  if(pdfMetaCache[lawKey]) delete pdfMetaCache[lawKey][no];
+  if(pdfDataCache[lawKey]) delete pdfDataCache[lawKey][no];
+}
+
 function compressImageFile(file, maxDim=900, quality=0.72){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -1414,19 +1538,144 @@ function downloadJsonFile(filename, obj){
   setTimeout(()=>URL.revokeObjectURL(url), 5000);
 }
 
+function downloadBlob(filename, blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+// ---------- Minimal dependency-free ZIP writer (STORE method, no compression) ----------
+// Standard ZIP file format, hand-written so this works offline with no external library.
+const CRC32_TABLE = (()=>{
+  const table = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c = n;
+    for(let k=0;k<8;k++){
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes){
+  let crc = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++){
+    crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosDateTime(){
+  const d = new Date();
+  const time = ((d.getHours() & 0x1F) << 11) | ((d.getMinutes() & 0x3F) << 5) | ((d.getSeconds() >> 1) & 0x1F);
+  const date = (((d.getFullYear()-1980) & 0x7F) << 9) | (((d.getMonth()+1) & 0xF) << 5) | (d.getDate() & 0x1F);
+  return { time, date };
+}
+
+function writeUint32(arr, offset, val){
+  arr[offset] = val & 0xFF;
+  arr[offset+1] = (val >>> 8) & 0xFF;
+  arr[offset+2] = (val >>> 16) & 0xFF;
+  arr[offset+3] = (val >>> 24) & 0xFF;
+}
+function writeUint16(arr, offset, val){
+  arr[offset] = val & 0xFF;
+  arr[offset+1] = (val >>> 8) & 0xFF;
+}
+
+// files: array of { name: string, content: string }  (content is treated as UTF-8 text)
+function buildZip(files){
+  const encoder = new TextEncoder();
+  const { time, date } = dosDateTime();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for(const file of files){
+    const nameBytes = encoder.encode(file.name);
+    const dataBytes = encoder.encode(file.content);
+    const crc = crc32(dataBytes);
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    writeUint32(local, 0, 0x04034b50);
+    writeUint16(local, 4, 20);
+    writeUint16(local, 6, 0);
+    writeUint16(local, 8, 0); // no compression (store)
+    writeUint16(local, 10, time);
+    writeUint16(local, 12, date);
+    writeUint32(local, 14, crc);
+    writeUint32(local, 18, dataBytes.length);
+    writeUint32(local, 22, dataBytes.length);
+    writeUint16(local, 26, nameBytes.length);
+    writeUint16(local, 28, 0);
+    local.set(nameBytes, 30);
+
+    localParts.push(local, dataBytes);
+
+    const central = new Uint8Array(46 + nameBytes.length);
+    writeUint32(central, 0, 0x02014b50);
+    writeUint16(central, 4, 20);
+    writeUint16(central, 6, 20);
+    writeUint16(central, 8, 0);
+    writeUint16(central, 10, 0);
+    writeUint16(central, 12, time);
+    writeUint16(central, 14, date);
+    writeUint32(central, 16, crc);
+    writeUint32(central, 20, dataBytes.length);
+    writeUint32(central, 24, dataBytes.length);
+    writeUint16(central, 28, nameBytes.length);
+    writeUint16(central, 30, 0);
+    writeUint16(central, 32, 0);
+    writeUint16(central, 34, 0);
+    writeUint16(central, 36, 0);
+    writeUint32(central, 38, 0);
+    writeUint32(central, 42, offset);
+    central.set(nameBytes, 46);
+
+    centralParts.push(central);
+    offset += local.length + dataBytes.length;
+  }
+
+  const centralStart = offset;
+  let centralSize = 0;
+  for(const c of centralParts) centralSize += c.length;
+
+  const end = new Uint8Array(22);
+  writeUint32(end, 0, 0x06054b50);
+  writeUint16(end, 4, 0);
+  writeUint16(end, 6, 0);
+  writeUint16(end, 8, files.length);
+  writeUint16(end, 10, files.length);
+  writeUint32(end, 12, centralSize);
+  writeUint32(end, 16, centralStart);
+  writeUint16(end, 20, 0);
+
+  return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
+}
+
 document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('exportDataBtn');
   const label = document.getElementById('exportProgressLabel');
   btn.disabled = true;
   try{
+    const files = [];
     for(let i=0;i<lawKeys.length;i++){
       const key = lawKeys[i];
       label.textContent = `匯出中… ${i+1} / ${lawKeys.length}（${DATA[key].title}）`;
       const obj = await buildExportObjectForLaw(key);
-      downloadJsonFile(`${key}.json`, obj);
-      await new Promise(r=>setTimeout(r, 150)); // small gap so the browser processes each download
+      files.push({ name: `${key}.json`, content: JSON.stringify(obj) });
     }
-    label.textContent = `匯出完成！共 ${lawKeys.length} 個檔案，請到瀏覽器的下載資料夾查看`;
+    label.textContent = `打包成 zip 中…`;
+    const zipBlob = buildZip(files);
+    const today = new Date().toISOString().slice(0,10);
+    downloadBlob(`六法工具箱-匯出-${today}.zip`, zipBlob);
+    label.textContent = `匯出完成！請到瀏覽器的下載資料夾查看 zip 檔案`;
   }catch(err){
     label.textContent = '匯出失敗：' + (err.message || String(err));
   }finally{
@@ -1626,7 +1875,8 @@ function render(){
     ensureFieldLoaded('note', loadingLaw),
     ensureFieldLoaded('answerCopy', loadingLaw),
     ensureFieldLoaded('exam', loadingLaw),
-    ensureImagesLoaded(loadingLaw)
+    ensureImagesLoaded(loadingLaw),
+    ensurePdfMetaLoaded(loadingLaw)
   ]).then(()=>{
     if(currentLaw === loadingLaw) renderCards();
   });
@@ -1751,7 +2001,23 @@ function renderCards(){
         </div>
       </div>
       <div class="divider"></div>
-      ${editableOriginal ? `
+      ${editableOriginal ? (()=>{
+        const pdfMeta = getPdfMeta(currentLaw, a.no);
+        if(pdfMeta){
+          return `
+          <div class="block original">
+            <div class="note-head">
+              <div class="block-label">法條原文（PDF 預覽：${escapeHtml(pdfMeta.filename)}）</div>
+              <div class="note-actions">
+                <button class="pdf-upload-btn remove-pdf" data-pdf-remove="1" data-law="${currentLaw}" data-no="${a.no}">✕ 移除PDF，改回文字</button>
+              </div>
+            </div>
+            <div class="pdf-preview-box" id="pdfbox_${cssSafe(currentLaw)}_${cssSafe(a.no)}" data-law="${currentLaw}" data-no="${a.no}">
+              <div class="pdf-loading-msg">PDF 載入中…</div>
+            </div>
+          </div>`;
+        }
+        return `
       <div class="block original">
         <div class="note-head">
           <div class="block-label">法條原文（可編輯／可貼上完整PDF原文）</div>
@@ -1760,13 +2026,14 @@ function renderCards(){
             <button class="reset-btn" data-field="originalText" data-reset="${origId}" data-default="${encodeURIComponent(seededOriginalText)}">↩ 回到上一步</button>
           </div>
         </div>
-        <div class="note-toolbar">
+        <div class="pdf-upload-row">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
+          <button type="button" class="pdf-upload-btn" data-pdf-upload="1" data-law="${currentLaw}" data-no="${a.no}">📄 上傳 PDF</button>
         </div>
         <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${origId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上解釋文、理由書、意見書全文…">${toEditableHtml(origVal)}</div>
-      </div>
-      ` : `
+      </div>`;
+      })() : `
       <div class="block original">
         <div class="block-label">法條原文</div>
         ${renderOriginalBlock(a.original)}
@@ -1825,6 +2092,61 @@ function renderCards(){
   });
 
   document.querySelectorAll('.exam-images-row').forEach(wireThumbRow);
+
+  // PDF upload buttons (editable-original laws only)
+  document.querySelectorAll('[data-pdf-upload]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳 PDF 中… 0%`;
+          await savePdfFile(lawKey, no, file, (done, total)=>{
+            if(label) label.textContent = `上傳 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = 'PDF 上傳完成';
+          renderCards();
+        }catch(err){
+          if(label) label.textContent = 'PDF 上傳失敗：' + (err.message || String(err));
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  });
+
+  document.querySelectorAll('[data-pdf-remove]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      if(!confirm('確定要移除這份 PDF 嗎？（原本的文字版本會保留，可以再貼回去）')) return;
+      await deletePdf(lawKey, no);
+      renderCards();
+    });
+  });
+
+  // Render actual PDF previews into their boxes (async, after the boxes exist in the DOM)
+  document.querySelectorAll('.pdf-preview-box').forEach(async (box)=>{
+    const lawKey = box.dataset.law, no = box.dataset.no;
+    try{
+      const dataUrl = await loadPdfData(lawKey, no);
+      if(!dataUrl) return;
+      // still the right card? (guards against fast law-switching)
+      if(!document.body.contains(box)) return;
+      box.innerHTML = `
+        <iframe src="${dataUrl}#toolbar=0" title="PDF 預覽"></iframe>
+        <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+      `;
+    }catch(e){
+      box.innerHTML = `<div class="pdf-loading-msg">PDF 載入失敗</div>`;
+    }
+  });
 
   if(filtered.length > MAX_RENDER){
     const more = document.createElement('div');

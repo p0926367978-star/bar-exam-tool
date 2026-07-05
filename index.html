@@ -554,6 +554,12 @@
   }
   .exam-add-image-btn:hover{border-color:var(--gold);color:var(--gold);}
   .exam-image-hint{font-size:11px;color:var(--ink-soft);}
+  .attach-pdf-wrap{margin-top:10px;}
+  .attach-pdf-head{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .pdf-preview-box.attach-pdf-box{height:340px;}
 
   .lightbox-overlay{
     position:fixed;inset:0;background:rgba(20,15,8,0.85);display:none;
@@ -1251,6 +1257,90 @@ async function deletePdf(lawKey, no){
   try{ await window.storage.delete(pdfMetaKeyPrefix(lawKey) + no, false); }catch(e){}
   if(pdfMetaCache[lawKey]) delete pdfMetaCache[lawKey][no];
   if(pdfDataCache[lawKey]) delete pdfDataCache[lawKey][no];
+}
+
+// ---------- General-purpose PDF attachment (e.g. scholar articles) — every article, every law ----------
+// Uses a separate key namespace from the editable-original PDF feature above, so the
+// two never collide even on 大法官解釋/憲法法庭判決 where both features are available.
+const attachMetaCache = {};   // lawKey -> { no: {filename, chunkCount} }
+const attachMetaLoaded = {};  // lawKey -> Promise
+const attachDataCache = {};   // lawKey -> { no: dataURL string }
+
+function attachMetaKeyPrefix(lawKey){ return `attachpdfmeta::${lawKey}::`; }
+function attachChunkKeyPrefix(lawKey, no){ return `attachpdfchunk::${lawKey}::${no}::`; }
+
+function ensureAttachMetaLoaded(lawKey){
+  if(attachMetaLoaded[lawKey]) return attachMetaLoaded[lawKey];
+  attachMetaCache[lawKey] = attachMetaCache[lawKey] || {};
+  attachMetaLoaded[lawKey] = (async ()=>{
+    try{
+      const prefix = attachMetaKeyPrefix(lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            attachMetaCache[lawKey][k.slice(prefix.length)] = JSON.parse(res.value);
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return attachMetaLoaded[lawKey];
+}
+
+function getAttachMeta(lawKey, no){
+  return (attachMetaCache[lawKey] && attachMetaCache[lawKey][no]) || null;
+}
+
+async function loadAttachData(lawKey, no){
+  attachDataCache[lawKey] = attachDataCache[lawKey] || {};
+  if(attachDataCache[lawKey][no]) return attachDataCache[lawKey][no];
+  const meta = getAttachMeta(lawKey, no);
+  if(!meta) return null;
+  const prefix = attachChunkKeyPrefix(lawKey, no);
+  let combined = '';
+  for(let i=0;i<meta.chunkCount;i++){
+    const res = await window.storage.get(prefix + i, false);
+    combined += (res && res.value) || '';
+  }
+  attachDataCache[lawKey][no] = combined;
+  return combined;
+}
+
+async function saveAttachFile(lawKey, no, file, onProgress){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const chunkCount = Math.ceil(dataUrl.length / PDF_CHUNK_SIZE);
+  for(let i=0;i<chunkCount;i++){
+    const chunk = dataUrl.slice(i*PDF_CHUNK_SIZE, (i+1)*PDF_CHUNK_SIZE);
+    await window.storage.set(attachChunkKeyPrefix(lawKey, no) + i, chunk, false);
+    if(onProgress) onProgress(i+1, chunkCount);
+  }
+  const meta = { filename: file.name, chunkCount };
+  await window.storage.set(attachMetaKeyPrefix(lawKey) + no, JSON.stringify(meta), false);
+  attachMetaCache[lawKey] = attachMetaCache[lawKey] || {};
+  attachMetaCache[lawKey][no] = meta;
+  attachDataCache[lawKey] = attachDataCache[lawKey] || {};
+  attachDataCache[lawKey][no] = dataUrl;
+  return meta;
+}
+
+async function deleteAttach(lawKey, no){
+  const meta = getAttachMeta(lawKey, no);
+  if(meta){
+    for(let i=0;i<meta.chunkCount;i++){
+      try{ await window.storage.delete(attachChunkKeyPrefix(lawKey, no) + i, false); }catch(e){}
+    }
+  }
+  try{ await window.storage.delete(attachMetaKeyPrefix(lawKey) + no, false); }catch(e){}
+  if(attachMetaCache[lawKey]) delete attachMetaCache[lawKey][no];
+  if(attachDataCache[lawKey]) delete attachDataCache[lawKey][no];
 }
 
 function compressImageFile(file, maxDim=900, quality=0.72){
@@ -2036,7 +2126,8 @@ function render(){
     ensureFieldLoaded('answerCopy', loadingLaw),
     ensureFieldLoaded('exam', loadingLaw),
     ensureImagesLoaded(loadingLaw),
-    ensurePdfMetaLoaded(loadingLaw)
+    ensurePdfMetaLoaded(loadingLaw),
+    ensureAttachMetaLoaded(loadingLaw)
   ]).then(()=>{
     if(currentLaw === loadingLaw) renderCards();
   });
@@ -2247,6 +2338,23 @@ function renderCards(){
         <div class="note-area" contenteditable="true" data-field="exam" id="${examId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上考古題、實務案例、爭點討論…（部分內容已從你的講義自動帶入）">${toEditableHtml(examVal)}</div>
         <div class="exam-images-row" id="imgs_${cssSafe(currentLaw)}_${cssSafe(a.no)}">${thumbsHtml(currentLaw, a.no)}</div>
         <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
+        ${(()=>{
+          const attMeta = getAttachMeta(currentLaw, a.no);
+          if(attMeta){
+            return `
+            <div class="attach-pdf-wrap">
+              <div class="attach-pdf-head">
+                <span>📎 附件：${escapeHtml(attMeta.filename)}</span>
+                <button class="pdf-upload-btn remove-pdf" data-attach-remove="1" data-law="${currentLaw}" data-no="${a.no}">✕ 移除附件</button>
+              </div>
+              <div class="pdf-preview-box attach-pdf-box" id="attachbox_${cssSafe(currentLaw)}_${cssSafe(a.no)}" data-law="${currentLaw}" data-no="${a.no}">
+                <div class="pdf-loading-msg">PDF 載入中…</div>
+              </div>
+            </div>`;
+          }
+          return `
+            <button type="button" class="pdf-upload-btn" data-attach-upload="1" data-law="${currentLaw}" data-no="${a.no}">📎 上傳附件 PDF（學者文章等）</button>`;
+        })()}
       </div>
     `;
     list.appendChild(card);
@@ -2292,8 +2400,61 @@ function renderCards(){
     });
   });
 
+  // ---------- General-purpose attachment PDF (any law, any article) ----------
+  document.querySelectorAll('[data-attach-upload]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳附件 PDF 中… 0%`;
+          await saveAttachFile(lawKey, no, file, (done, total)=>{
+            if(label) label.textContent = `上傳附件 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = '附件 PDF 上傳完成';
+          renderCards();
+        }catch(err){
+          if(label) label.textContent = '附件 PDF 上傳失敗：' + (err.message || String(err));
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  });
+
+  document.querySelectorAll('[data-attach-remove]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
+      await deleteAttach(lawKey, no);
+      renderCards();
+    });
+  });
+
+  document.querySelectorAll('.attach-pdf-box').forEach(async (box)=>{
+    const lawKey = box.dataset.law, no = box.dataset.no;
+    try{
+      const dataUrl = await loadAttachData(lawKey, no);
+      if(!dataUrl) return;
+      if(!document.body.contains(box)) return;
+      box.innerHTML = `
+        <iframe src="${dataUrl}#toolbar=0" title="附件 PDF 預覽"></iframe>
+        <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+      `;
+    }catch(e){
+      box.innerHTML = `<div class="pdf-loading-msg">附件 PDF 載入失敗</div>`;
+    }
+  });
+
   // Render actual PDF previews into their boxes (async, after the boxes exist in the DOM)
-  document.querySelectorAll('.pdf-preview-box').forEach(async (box)=>{
+  document.querySelectorAll('.pdf-preview-box:not(.attach-pdf-box)').forEach(async (box)=>{
     const lawKey = box.dataset.law, no = box.dataset.no;
     try{
       const dataUrl = await loadPdfData(lawKey, no);

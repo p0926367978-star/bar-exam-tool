@@ -710,6 +710,8 @@
   </div>
   <ul class="law-nav" id="lawNav"></ul>
   <button id="exportDataBtn" class="export-data-btn">⬇ 匯出目前資料（含筆記）</button>
+  <button id="addMoreLawsBtn" class="export-data-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">➕ 新增科目 / 匯入新資料</button>
+  <input type="file" id="addMoreLawsInput" accept="application/json" multiple style="display:none;">
   <div class="export-progress-label" id="exportProgressLabel"></div>
   <button id="logoutBtn" class="export-data-btn" style="display:none;border-color:var(--seal-red-soft);color:var(--seal-red-soft);">登出帳號</button>
   <div class="cover-footer">
@@ -847,7 +849,7 @@ function makeFirestoreBackend(uid){
   };
 }
 
-const LAW_KEYS_EXPECTED = ["civil","foreign","civpro","securities","company","criminal","crimpro","localgov","admexec","admproc","admpenalty","insurance","family","statecomp","compulsory","negotiable","appeal","constitution","constcourt"];
+const LAW_KEYS_EXPECTED = ["civil","foreign","civpro","securities","company","criminal","crimpro","localgov","admexec","admproc","admpenalty","insurance","family","statecomp","compulsory","negotiable","appeal","constitution","constcourt","justiceinterp","concourtjudg"];
 
 let DATA = {};
 let lawKeys = [];
@@ -1423,6 +1425,38 @@ document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
   }
 });
 
+// ---------- Add more subjects while already logged in / already using the app ----------
+document.getElementById('addMoreLawsBtn').addEventListener('click', ()=>{
+  document.getElementById('addMoreLawsInput').click();
+});
+document.getElementById('addMoreLawsInput').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(files.length === 0) return;
+  const label = document.getElementById('exportProgressLabel');
+  const btn = document.getElementById('addMoreLawsBtn');
+  btn.disabled = true;
+  try{
+    for(let i=0;i<files.length;i++){
+      const file = files[i];
+      const key = file.name.replace(/\.json$/i, '');
+      label.textContent = `新增中… ${i+1} / ${files.length}（${file.name}）`;
+      const text = await file.text();
+      const lawObj = JSON.parse(text);
+      await window.storage.set(`lawcontent::${key}`, JSON.stringify(lawObj), false);
+      DATA[key] = lawObj; // make it available immediately without needing a reload
+    }
+    lawKeys = Object.keys(DATA);
+    buildLawNav();
+    label.textContent = `新增完成！共加入 ${files.length} 個科目，左側清單已更新`;
+  }catch(err){
+    label.textContent = '新增失敗：' + (err.message || String(err));
+  }finally{
+    btn.disabled = false;
+    e.target.value = '';
+    setTimeout(()=>{ if(label) label.textContent=''; }, 6000);
+  }
+});
+
 // ---------- Global (cross-subject) search ----------
 let globalSearchLoading = false;
 let globalSearchTimer = null;
@@ -1871,7 +1905,6 @@ function showImportScreen(errorMsg){
     if(files.length === 0) return;
     document.getElementById('importProgressWrap').style.display = 'block';
     const label = document.getElementById('importProgressLabel');
-    const assembled = {};
     try{
       for(let i=0;i<files.length;i++){
         const file = files[i];
@@ -1879,15 +1912,22 @@ function showImportScreen(errorMsg){
         if(label) label.textContent = `讀取中… ${i+1} / ${files.length}（${file.name}）`;
         const text = await file.text();
         const lawObj = JSON.parse(text);
-        assembled[key] = lawObj;
         await saveOneLawToStorage(key, lawObj, i+1, files.length);
       }
-      const missing = LAW_KEYS_EXPECTED.filter(k => !assembled[k]);
-      if(missing.length > 0){
-        showImportScreen(`缺少 ${missing.length} 個檔案：${missing.join(', ')}.json，請確認全部都選到了`);
+      // Re-check storage for the FULL expected set (not just this batch), so importing
+      // only newly-added subjects on top of what's already stored still works fine.
+      if(label) label.textContent = '確認資料完整性…';
+      const complete = await tryLoadDataFromStorage();
+      if(!complete){
+        const stillMissing = [];
+        for(const k of LAW_KEYS_EXPECTED){
+          try{ await window.storage.get(`lawcontent::${k}`, false); }
+          catch(e){ stillMissing.push(k); }
+        }
+        showImportScreen(`目前資料庫裡還缺少：${stillMissing.join(', ')}.json，請把這些檔案也匯入`);
         return;
       }
-      DATA = assembled;
+      DATA = complete;
       startApp();
     }catch(err){
       showImportScreen(err.message || String(err));

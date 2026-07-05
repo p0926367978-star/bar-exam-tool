@@ -395,6 +395,15 @@
     border:1px solid var(--rule);border-radius:14px;padding:4px 10px;cursor:pointer;white-space:nowrap;
   }
   .reset-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .note-area.scrollable-original{
+    max-height:420px;
+    overflow-y:auto;
+    font-family:'Noto Serif TC',serif;
+    font-size:15px;
+    line-height:1.9;
+    background:var(--page-cream-2);
+    border-left:3px solid var(--gold);
+  }
   .note-area{
     width:100%;
     min-height:90px;
@@ -862,7 +871,8 @@ let currentRange = null; // { startNo, endNo, label }
 
 const testedCache = {};
 const testedLoaded = {};
-const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {} };   // field -> lawKey -> { [no]: overriddenValue }
+const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {} };   // field -> lawKey -> { [no]: overriddenValue }
+const EDITABLE_ORIGINAL_LAWS = ["justiceinterp", "concourtjudg"];
 const fieldLoaded = { note: {}, exam: {} };
 
 function testedKeyPrefix(lawKey){ return `tested::${lawKey}::`; }
@@ -942,7 +952,7 @@ function getFieldValue(field, lawKey, no, fallback){
   return fallback;
 }
 
-const previousValueCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {} };
+const previousValueCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {} };
 function getUndoValue(field, lawKey, no, fallback){
   const c = previousValueCache[field] && previousValueCache[field][lawKey];
   if(c && Object.prototype.hasOwnProperty.call(c, no)) return c[no];
@@ -1716,6 +1726,7 @@ function renderCards(){
     const noteId = `note_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
     const answerId = `answer_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
     const examId = `exam_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const origId = `orig_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
     const ttId = `tt_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
     const ttState = getTestedState(currentLaw, a.no);
     const noteVal = getFieldValue('note', currentLaw, a.no, a.note);
@@ -1723,6 +1734,9 @@ function renderCards(){
     const answerSeeded = !!(a.answerCopy && a.answerCopy.trim());
     const examVal = getFieldValue('exam', currentLaw, a.no, a.exam || '');
     const examSeeded = !!(a.exam && a.exam.trim());
+    const editableOriginal = EDITABLE_ORIGINAL_LAWS.includes(currentLaw);
+    const seededOriginalText = (a.original || []).join('\n\n');
+    const origVal = editableOriginal ? getFieldValue('originalText', currentLaw, a.no, seededOriginalText) : '';
     card.innerHTML = `
       <div class="card-top">
         <div>
@@ -1737,10 +1751,27 @@ function renderCards(){
         </div>
       </div>
       <div class="divider"></div>
+      ${editableOriginal ? `
+      <div class="block original">
+        <div class="note-head">
+          <div class="block-label">法條原文（可編輯／可貼上完整PDF原文）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${origId}"></span>
+            <button class="reset-btn" data-field="originalText" data-reset="${origId}" data-default="${encodeURIComponent(seededOriginalText)}">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
+        </div>
+        <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${origId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上解釋文、理由書、意見書全文…">${toEditableHtml(origVal)}</div>
+      </div>
+      ` : `
       <div class="block original">
         <div class="block-label">法條原文</div>
         ${renderOriginalBlock(a.original)}
       </div>
+      `}
       <div class="block english">
         <div class="block-label">英文對照 · English</div>
         ${renderEnglishBlock(a.english)}

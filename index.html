@@ -132,6 +132,26 @@
     border:1px solid var(--gold); border-radius:4px; padding:1px 6px; margin-right:6px;
   }
 
+  .log-date-group{margin-bottom:20px;}
+  .log-date-head{
+    font-family:'Noto Serif TC',serif; font-weight:800; font-size:14.5px;
+    color:var(--seal-red); margin-bottom:8px; padding-bottom:4px;
+    border-bottom:1.5px dashed var(--gold);
+  }
+  .log-date-count{font-family:'Noto Sans Mono',monospace; font-size:11px; color:var(--ink-soft); font-weight:400;}
+  .log-item{
+    background:#fff; border:1px solid var(--rule); border-left:4px solid var(--gold);
+    border-radius:8px; padding:10px 14px; margin-bottom:8px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .log-item:hover{border-left-color:var(--seal-red);}
+  .log-law{font-size:11px; font-weight:700; color:var(--seal-red); letter-spacing:1px;}
+  .log-no{font-family:'Noto Sans Mono',monospace; font-weight:700; font-size:12.5px; color:var(--cover-green);}
+  .log-field-tag{
+    margin-left:auto; font-size:10px; font-weight:700; color:var(--gold);
+    border:1px solid var(--gold); border-radius:4px; padding:2px 7px; white-space:nowrap;
+  }
+
   .law-nav{list-style:none;margin:0;padding:0;flex:1;}
   .law-item{margin-bottom:4px;}
   .law-btn{
@@ -235,6 +255,25 @@
     cursor:pointer;
   }
   .add-entry-btn:hover{background:var(--cover-green-dark);}
+  .print-btn{background:var(--seal-red); margin-left:0;}
+  .print-btn:hover{background:var(--seal-red-soft);}
+
+  @media print{
+    .cover, .global-search-overlay, .add-entry-overlay, .lightbox-overlay,
+    #backToTopBtn, .outline-block, .note-banner-block,
+    .toolbar, .tested-filter-row, .range-indicator,
+    .note-toolbar, .reset-btn, .save-indicator, .tested-toggle,
+    .exam-add-image-btn, .exam-thumb-delete, .pdf-upload-btn,
+    .pdf-open-newtab, .attach-pdf-head button, .has-note-badge,
+    .print-btn, .add-entry-btn, .source-link, .kicker
+    { display:none !important; }
+    body{ display:block !important; background:#fff; }
+    .page{ padding:0; max-width:100%; }
+    .card{ break-inside:avoid; border:1px solid #999; box-shadow:none; }
+    .note-area{ border:1px solid #ccc; background:#fff; }
+    .law-article-block, .law-article-block.single{ background:#f5f5f0; }
+    .pdf-preview-box{ height:auto; min-height:200px; background:#fff; }
+  }
   .add-entry-overlay{
     position:fixed; inset:0; background:rgba(20,15,8,0.55);
     z-index:950; display:flex; align-items:center; justify-content:center;
@@ -519,6 +558,36 @@
   }
   .fmt-btn:hover{border-color:var(--gold); color:var(--ink);}
   .fmt-btn.strike-btn{text-decoration:line-through;}
+  .fmt-btn.highlighter-btn{background:linear-gradient(180deg,#fff 40%, #E3D5B8 40%);}
+
+  .highlighter-popover{
+    position:fixed;
+    z-index:1200;
+    background:#fff;
+    border:1.5px solid var(--rule);
+    border-radius:10px;
+    padding:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .highlighter-swatches{display:flex; gap:6px;}
+  .highlighter-swatch{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:2px solid rgba(0,0,0,0.08);
+    cursor:pointer;
+    padding:0;
+  }
+  .highlighter-swatch:hover{border-color:var(--ink-soft); transform:scale(1.1);}
+  .highlighter-clear-btn{
+    font-size:11px; color:var(--ink-soft); background:var(--page-cream-2);
+    border:1px solid var(--rule); border-radius:6px; padding:5px 8px; cursor:pointer;
+  }
+  .highlighter-clear-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .note-area a{color:var(--seal-red); text-decoration:underline;}
+  .note-area a:hover{color:var(--seal-red-soft);}
 
   .tested-toggle{
     font-family:'Noto Sans TC',sans-serif;
@@ -779,9 +848,24 @@
 
   @media (max-width: 760px){
     body{flex-direction:column;}
-    .cover{width:100%;height:auto;position:relative;min-width:0;}
+    .cover{width:100%;height:auto;position:relative;min-width:0;max-height:none;}
     .page{padding:24px 18px 40px;}
     h1{font-size:26px;}
+
+    .law-nav{max-height:56vh; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+    .law-btn{
+      font-size:17px;
+      font-weight:600;
+      padding:16px 14px;
+      border-bottom:1px solid rgba(212,175,106,0.15);
+      border-radius:8px;
+    }
+    .law-count{font-size:13px;}
+    .cover-search input, .global-search-box input{
+      font-size:16px;
+      padding:13px 12px;
+    }
+    .export-data-btn{font-size:14px; padding:13px;}
   }
 </style>
 </head>
@@ -798,6 +882,7 @@
     <div class="global-search-hint" id="globalSearchHint"></div>
   </div>
   <ul class="law-nav" id="lawNav"></ul>
+  <button id="activityLogBtn" class="export-data-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">📅 學習紀錄</button>
   <button id="exportDataBtn" class="export-data-btn">⬇ 匯出目前資料（含筆記）</button>
   <button id="addMoreLawsBtn" class="export-data-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">➕ 新增科目 / 匯入新資料</button>
   <input type="file" id="addMoreLawsInput" accept="application/json" multiple style="display:none;">
@@ -822,7 +907,22 @@
   </div>
 </div>
 
+<div class="global-search-overlay" id="activityLogOverlay" style="display:none;">
+  <div class="global-search-panel">
+    <div class="global-search-panel-head">
+      <div>📅 學習紀錄（依日期顯示你動過筆記的條文）</div>
+      <button id="activityLogClose" class="clear-range">✕ 關閉</button>
+    </div>
+    <div id="activityLogResults" class="global-search-results"></div>
+  </div>
+</div>
+
 <button id="backToTopBtn" title="回到最上方">↑</button>
+
+<div class="highlighter-popover" id="highlighterPopover" style="display:none;">
+  <div class="highlighter-swatches" id="highlighterSwatches"></div>
+  <button id="highlighterClearBtn" class="highlighter-clear-btn">清除螢光</button>
+</div>
 
 <div class="lightbox-overlay" id="lightboxOverlay">
   <button class="lightbox-close" id="lightboxClose">×</button>
@@ -969,7 +1069,7 @@ let currentRange = null; // { startNo, endNo, label }
 
 const testedCache = {};
 const testedLoaded = {};
-const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {} };   // field -> lawKey -> { [no]: overriddenValue }
+const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, origHighlight: {}, engHighlight: {} };   // field -> lawKey -> { [no]: overriddenValue }
 const EDITABLE_ORIGINAL_LAWS = ["justiceinterp", "concourtjudg"];
 const fieldLoaded = { note: {}, exam: {} };
 
@@ -1068,12 +1168,94 @@ async function saveField(field, lawKey, no, value, taId){
   try{
     if(field === 'unclassified'){
       await window.storage.set(`unclassified::${lawKey}`, value, false);
+      logActivity(lawKey, '（整體筆記）', field);
     } else {
       await window.storage.set(fieldKeyPrefix(field, lawKey) + no, value, false);
+      logActivity(lawKey, no, field); // per-article fields only, fire-and-forget
     }
     return true;
   }catch(e){
     return false;
+  }
+}
+
+// ---------- Daily study-activity log ("which articles did I touch today") ----------
+const ACTIVITY_FIELD_LABELS = { note: '我的筆記', exam: '考題研究', answerCopy: '抄答案', originalText: '法條原文' };
+
+async function logActivity(lawKey, no, field){
+  try{
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, local UTC date is fine for a daily log
+    const key = `activitylog::${today}`;
+    let entries = {};
+    try{
+      const res = await window.storage.get(key, false);
+      if(res && res.value) entries = JSON.parse(res.value);
+    }catch(e){ /* no entry yet for today */ }
+    const lawTitle = (DATA[lawKey] && DATA[lawKey].title) || lawKey;
+    entries[`${lawKey}::${no}`] = { lawKey, no, lawTitle, field, time: Date.now() };
+    await window.storage.set(key, JSON.stringify(entries), false);
+  }catch(e){ /* logging is best-effort, never block the real save */ }
+}
+
+async function showActivityLogOverlay(){
+  const overlay = document.getElementById('activityLogOverlay');
+  const resultsEl = document.getElementById('activityLogResults');
+  overlay.style.display = 'flex';
+  resultsEl.innerHTML = `<div class="empty-state">載入中…</div>`;
+  try{
+    const listRes = await window.storage.list('activitylog::', false);
+    const keys = (listRes && listRes.keys) || [];
+    const dates = keys.slice().sort().reverse();
+    if(dates.length === 0){
+      resultsEl.innerHTML = `<div class="empty-state"><div class="big">還沒有紀錄</div>開始寫筆記之後，這裡就會依日期顯示你動過的條文</div>`;
+      return;
+    }
+    const blocks = [];
+    for(const date of dates){
+      let entries = {};
+      try{
+        const res = await window.storage.get(`activitylog::${date}`, false);
+        if(res && res.value) entries = JSON.parse(res.value);
+      }catch(e){}
+      const items = Object.values(entries).sort((a,b)=>b.time - a.time);
+      if(items.length === 0) continue;
+      blocks.push({ date, items });
+    }
+    resultsEl.innerHTML = blocks.map(b=>`
+      <div class="log-date-group">
+        <div class="log-date-head">${escapeHtml(b.date)}　<span class="log-date-count">共 ${b.items.length} 則</span></div>
+        ${b.items.map(it=>`
+          <div class="log-item" data-law="${escapeHtml(it.lawKey)}" data-no="${escapeHtml(it.no)}">
+            <span class="log-law">${escapeHtml(it.lawTitle)}</span>
+            <span class="log-no">${escapeHtml(it.no)}</span>
+            <span class="log-field-tag">${escapeHtml(ACTIVITY_FIELD_LABELS[it.field] || it.field)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('') || `<div class="empty-state"><div class="big">還沒有紀錄</div>開始寫筆記之後，這裡就會依日期顯示你動過的條文</div>`;
+
+    resultsEl.querySelectorAll('.log-item').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        overlay.style.display = 'none';
+        currentLaw = el.dataset.law;
+        currentChapter = 'all';
+        currentRange = null;
+        const isOverall = el.dataset.no === '（整體筆記）';
+        currentQuery = isOverall ? '' : el.dataset.no;
+        render();
+        setTimeout(()=>{
+          if(isOverall){
+            const block = document.getElementById('unclassifiedBlock');
+            if(block){ block.open = true; block.scrollIntoView({behavior:'smooth', block:'start'}); }
+          } else {
+            const si = document.getElementById('searchInput');
+            if(si) si.value = currentQuery;
+          }
+        }, 80);
+      });
+    });
+  }catch(err){
+    resultsEl.innerHTML = `<div class="empty-state">載入失敗：${escapeHtml(err.message || String(err))}</div>`;
   }
 }
 
@@ -1417,6 +1599,143 @@ document.addEventListener('paste', (e)=>{
   target.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
+const MORANDI_COLORS = [
+  { name: '莫蘭迪綠', hex: '#B5C4B1' },
+  { name: '莫蘭迪粉', hex: '#E0C3BB' },
+  { name: '莫蘭迪藍', hex: '#B0C4CC' },
+  { name: '莫蘭迪黃', hex: '#E3D5B8' },
+  { name: '莫蘭迪紫', hex: '#CBB8CC' },
+  { name: '莫蘭迪灰', hex: '#C9C2BA' },
+];
+
+let highlighterTarget = null;
+let highlighterMode = 'exec'; // 'exec' = contenteditable execCommand path, 'manual' = read-only block wrap path
+let highlighterManualCtx = null; // { blockId, field, lawKey, no }
+let savedManualRange = null; // preserved Range for the manual (non-contenteditable) highlight path
+
+function buildHighlighterSwatches(){
+  const wrap = document.getElementById('highlighterSwatches');
+  if(wrap.childElementCount > 0) return; // already built once
+  MORANDI_COLORS.forEach(c=>{
+    const btn = document.createElement('button');
+    btn.className = 'highlighter-swatch';
+    btn.style.background = c.hex;
+    btn.title = c.name;
+    btn.type = 'button';
+    btn.addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      applyHighlight(c.hex);
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+// Wrap the given Range's contents in a <span style="background:color">, handling
+// ranges that span multiple child nodes (e.g. across a <br> or multiple paragraphs).
+function wrapRangeWithHighlight(range, colorHex){
+  const span = document.createElement('span');
+  span.className = 'user-highlight';
+  span.style.backgroundColor = colorHex;
+  try{
+    range.surroundContents(span);
+  }catch(e){
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+}
+
+function clearHighlightsInRange(root, range){
+  const spans = root.querySelectorAll('span.user-highlight');
+  spans.forEach(span=>{
+    if(range.intersectsNode(span)){
+      const parent = span.parentNode;
+      while(span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+    }
+  });
+}
+
+async function persistManualHighlight(){
+  if(!highlighterManualCtx) return;
+  const { blockId, field, lawKey, no } = highlighterManualCtx;
+  const block = document.getElementById(blockId);
+  if(!block) return;
+  queueSave(field, lawKey, no, block.innerHTML, `ind_manualhl_${cssSafe(lawKey)}_${cssSafe(no)}_${field}`);
+}
+
+function applyHighlight(colorOrNull){
+  if(highlighterMode === 'manual'){
+    if(!highlighterManualCtx || !savedManualRange) return;
+    const block = document.getElementById(highlighterManualCtx.blockId);
+    if(block){
+      if(colorOrNull){
+        wrapRangeWithHighlight(savedManualRange, colorOrNull);
+      } else {
+        clearHighlightsInRange(block, savedManualRange);
+      }
+      persistManualHighlight();
+    }
+    document.getElementById('highlighterPopover').style.display = 'none';
+    return;
+  }
+  if(!highlighterTarget) return;
+  highlighterTarget.focus();
+  try{ document.execCommand('hiliteColor', false, colorOrNull || 'transparent'); }catch(e){}
+  highlighterTarget.dispatchEvent(new Event('input', {bubbles:true}));
+  document.getElementById('highlighterPopover').style.display = 'none';
+}
+
+function openHighlighterPopover(triggerBtn, target){
+  buildHighlighterSwatches();
+  highlighterMode = 'exec';
+  highlighterTarget = target;
+  highlighterManualCtx = null;
+  positionHighlighterPopover(triggerBtn);
+}
+
+function openManualHighlighterPopover(triggerBtn, blockId, field, lawKey, no){
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0 || sel.isCollapsed){
+    alert('請先選取一段文字，再點螢光筆');
+    return;
+  }
+  const range = sel.getRangeAt(0).cloneRange();
+  const block = document.getElementById(blockId);
+  if(!block || !block.contains(range.commonAncestorContainer)){
+    alert('請選取這個區塊裡的文字');
+    return;
+  }
+  buildHighlighterSwatches();
+  highlighterMode = 'manual';
+  highlighterManualCtx = { blockId, field, lawKey, no };
+  savedManualRange = range;
+  positionHighlighterPopover(triggerBtn);
+}
+
+function positionHighlighterPopover(triggerBtn){
+  const pop = document.getElementById('highlighterPopover');
+  const rect = triggerBtn.getBoundingClientRect();
+  pop.style.display = 'flex';
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if(left + popRect.width > window.innerWidth - 10) left = window.innerWidth - popRect.width - 10;
+  if(top + popRect.height > window.innerHeight - 10) top = rect.top - popRect.height - 6;
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+}
+
+document.getElementById('highlighterPopover').addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+document.getElementById('highlighterClearBtn').addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+document.getElementById('highlighterClearBtn').addEventListener('click', ()=>{ applyHighlight(null); });
+document.addEventListener('click', (e)=>{
+  const pop = document.getElementById('highlighterPopover');
+  if(pop.style.display === 'none') return;
+  if(pop.contains(e.target) || e.target.classList.contains('highlighter-btn')) return;
+  pop.style.display = 'none';
+});
+
 function wireFmtButtons(root){
   root.querySelectorAll('.fmt-btn').forEach(btn=>{
     if(btn._wired) return;
@@ -1425,8 +1744,29 @@ function wireFmtButtons(root){
     btn.addEventListener('click', ()=>{
       const target = document.getElementById(btn.dataset.target);
       if(!target) return;
+      if(btn.classList.contains('highlighter-btn')){
+        target.focus();
+        openHighlighterPopover(btn, target);
+        return;
+      }
       target.focus();
-      try{ document.execCommand(btn.dataset.cmd, false, null); }catch(e){}
+      const cmd = btn.dataset.cmd;
+      try{
+        if(cmd === 'createLink'){
+          const sel = window.getSelection();
+          const hasSelection = sel && sel.toString().trim().length > 0;
+          let url = prompt(hasSelection ? '請輸入這段文字要連結的網址：' : '請輸入網址（會直接插入為連結文字）：', 'https://');
+          if(!url) return;
+          if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+          if(hasSelection){
+            document.execCommand('createLink', false, url);
+          } else {
+            document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+          }
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+      }catch(e){}
       target.dispatchEvent(new Event('input', {bubbles:true}));
     });
   });
@@ -1525,28 +1865,34 @@ function htmlToText(html){
   return div.textContent || '';
 }
 
-function renderOriginalBlock(paragraphs){
+function renderOriginalBlock(paragraphs, blockId, overrideHtml){
+  if(overrideHtml){
+    return `<div class="law-article-block" id="${blockId}">${overrideHtml}</div>`;
+  }
   if(!paragraphs || paragraphs.length === 0) return '';
   if(paragraphs.length === 1){
-    return `<div class="law-article-block single"><div class="law-para-text">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
+    return `<div class="law-article-block single" id="${blockId}"><div class="law-para-text">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
   }
   const rows = paragraphs.map((p, i)=>`
     <div class="law-para-row">
       <span class="law-para-num">${i+1}</span>
       <span class="law-para-text">${escapeHtml(p).replace(/\n/g,'<br>')}</span>
     </div>`).join('');
-  return `<div class="law-article-block">${rows}</div>`;
+  return `<div class="law-article-block" id="${blockId}">${rows}</div>`;
 }
 
-function renderEnglishBlock(paragraphs){
+function renderEnglishBlock(paragraphs, blockId, overrideHtml){
+  if(overrideHtml){
+    return `<div class="english-block" id="${blockId}">${overrideHtml}</div>`;
+  }
   if(!paragraphs || paragraphs.length === 0){
-    return `<div class="english-block empty">尚無英文對照，你可以自行補上，或請我之後協助整理。</div>`;
+    return `<div class="english-block empty" id="${blockId}">尚無英文對照，你可以自行補上，或請我之後協助整理。</div>`;
   }
   if(paragraphs.length === 1){
-    return `<div class="english-block"><div class="eng-para">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
+    return `<div class="english-block" id="${blockId}"><div class="eng-para">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
   }
   const rows = paragraphs.map((p, i)=>`<div class="eng-para"><span class="eng-num">${i+1}.</span>${escapeHtml(p).replace(/\n/g,'<br>')}</div>`).join('');
-  return `<div class="english-block">${rows}</div>`;
+  return `<div class="english-block" id="${blockId}">${rows}</div>`;
 }
 
 // ---------- App shell (built once data + DOM are ready) ----------
@@ -1557,6 +1903,7 @@ function buildAppShell(){
       <h1 id="lawTitle">法規名稱</h1>
       <p class="law-desc" id="lawDesc">說明</p>
       <a class="source-link" href="https://law.moj.gov.tw/Index.aspx" target="_blank" rel="noopener">法源查證：全國法規資料庫 law.moj.gov.tw ↗</a>
+      <button id="printBtn" class="add-entry-btn print-btn">🖨 列印／匯出PDF</button>
       <button id="addEntryBtn" class="add-entry-btn" style="display:none;">➕ 新增一則</button>
     </div>
     <details class="outline-block" id="outlineBlock" open>
@@ -1582,6 +1929,8 @@ function buildAppShell(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="unclassified_ta" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
         </div>
         <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
       </div>
@@ -1634,6 +1983,10 @@ function buildAppShell(){
 
   // ---------- Add a new entry directly (大法官解釋 / 憲法法庭判決) without re-importing JSON ----------
   // (bound here, not at top level, because #addEntryBtn only exists after this template renders)
+  document.getElementById('printBtn').addEventListener('click', ()=>{
+    window.print();
+  });
+
   document.getElementById('addEntryBtn').addEventListener('click', ()=>{
     const overlay = document.getElementById('addEntryOverlay');
     document.getElementById('addEntryTitle').textContent = currentLaw === 'concourtjudg' ? '新增一則判決' : '新增一則解釋';
@@ -1905,6 +2258,16 @@ document.getElementById('addEntrySubmit').addEventListener('click', async ()=>{
   }, 50);
 });
 
+document.getElementById('activityLogBtn').addEventListener('click', ()=>{
+  showActivityLogOverlay();
+});
+document.getElementById('activityLogClose').addEventListener('click', ()=>{
+  document.getElementById('activityLogOverlay').style.display = 'none';
+});
+document.getElementById('activityLogOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'activityLogOverlay') document.getElementById('activityLogOverlay').style.display = 'none';
+});
+
 document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('exportDataBtn');
   const label = document.getElementById('exportProgressLabel');
@@ -2124,6 +2487,8 @@ function render(){
     ensureTestedLoaded(loadingLaw),
     ensureFieldLoaded('note', loadingLaw),
     ensureFieldLoaded('answerCopy', loadingLaw),
+    ensureFieldLoaded('origHighlight', loadingLaw),
+    ensureFieldLoaded('engHighlight', loadingLaw),
     ensureFieldLoaded('exam', loadingLaw),
     ensureImagesLoaded(loadingLaw),
     ensurePdfMetaLoaded(loadingLaw),
@@ -2281,20 +2646,46 @@ function renderCards(){
         <div class="pdf-upload-row">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="pdf-upload-btn" data-pdf-upload="1" data-law="${currentLaw}" data-no="${a.no}">📄 上傳 PDF</button>
         </div>
         <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${origId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上解釋文、理由書、意見書全文…">${toEditableHtml(origVal)}</div>
       </div>`;
-      })() : `
+      })() : (()=>{
+        const origBlockId = `origblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+        const origOverride = getFieldValue('origHighlight', currentLaw, a.no, null);
+        return `
       <div class="block original">
-        <div class="block-label">法條原文</div>
-        ${renderOriginalBlock(a.original)}
-      </div>
-      `}
+        <div class="note-head">
+          <div class="block-label">法條原文</div>
+          <div class="note-actions">
+            <button class="reset-btn" data-highlight-reset="1" data-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${origBlockId}">↩ 清除全部螢光</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${origBlockId}" data-manual-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到條文本身）">🖍 螢光筆</button>
+        </div>
+        ${renderOriginalBlock(a.original, origBlockId, origOverride)}
+      </div>`;
+      })()}
+      ${(()=>{
+        const engBlockId = `engblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+        const engOverride = getFieldValue('engHighlight', currentLaw, a.no, null);
+        return `
       <div class="block english">
-        <div class="block-label">英文對照 · English</div>
-        ${renderEnglishBlock(a.english)}
-      </div>
+        <div class="note-head">
+          <div class="block-label">英文對照 · English</div>
+          <div class="note-actions">
+            <button class="reset-btn" data-highlight-reset="1" data-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${engBlockId}">↩ 清除全部螢光</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${engBlockId}" data-manual-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到內容本身）">🖍 螢光筆</button>
+        </div>
+        ${renderEnglishBlock(a.english, engBlockId, engOverride)}
+      </div>`;
+      })()}
       <div class="block note-block">
         <div class="note-head">
           <div class="block-label note-label">我的筆記（自動儲存）</div>
@@ -2306,6 +2697,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${noteId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="note" id="${noteId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡可以寫下你自己的筆記…">${toEditableHtml(noteVal)}</div>
       </div>
@@ -2320,6 +2713,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${answerId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="answerCopy" id="${answerId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡放申論題的模範作答／可直接抄的答案內容…">${toEditableHtml(answerVal)}</div>
       </div>
@@ -2334,6 +2729,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${examId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="exam" id="${examId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上考古題、實務案例、爭點討論…（部分內容已從你的講義自動帶入）">${toEditableHtml(examVal)}</div>
         <div class="exam-images-row" id="imgs_${cssSafe(currentLaw)}_${cssSafe(a.no)}">${thumbsHtml(currentLaw, a.no)}</div>
@@ -2434,6 +2831,25 @@ function renderCards(){
       const lawKey = btn.dataset.law, no = btn.dataset.no;
       if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
       await deleteAttach(lawKey, no);
+      renderCards();
+    });
+  });
+
+  // ---------- Manual highlighter for read-only 法條原文 / 英文對照 blocks ----------
+  document.querySelectorAll('.manual-highlight-btn').forEach(btn=>{
+    if(btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      openManualHighlighterPopover(btn, btn.dataset.manualTarget, btn.dataset.manualField, btn.dataset.law, btn.dataset.no);
+    });
+  });
+
+  document.querySelectorAll('[data-highlight-reset]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('確定要清除這個區塊裡全部的螢光筆標記嗎？（不會影響文字內容）')) return;
+      const field = btn.dataset.field, lawKey = btn.dataset.law, no = btn.dataset.no, blockId = btn.dataset.targetBlock;
+      await saveField(field, lawKey, no, '', `ind_manualhl_${cssSafe(lawKey)}_${cssSafe(no)}_${field}`);
       renderCards();
     });
   });

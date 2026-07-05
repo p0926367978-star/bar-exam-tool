@@ -221,6 +221,39 @@
     border-bottom:1px dashed var(--seal-red-soft);
   }
   .source-link:hover{color:var(--seal-red-soft);}
+  .add-entry-btn{
+    display:inline-block;
+    margin-top:12px;
+    margin-left:14px;
+    background:var(--cover-green);
+    color:var(--page-cream);
+    font-weight:700;
+    font-size:12.5px;
+    padding:8px 16px;
+    border:none;
+    border-radius:20px;
+    cursor:pointer;
+  }
+  .add-entry-btn:hover{background:var(--cover-green-dark);}
+  .add-entry-overlay{
+    position:fixed; inset:0; background:rgba(20,15,8,0.55);
+    z-index:950; display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .add-entry-panel{
+    background:var(--page-cream); border-radius:12px; max-width:440px; width:100%;
+    padding:24px 26px; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .add-entry-head{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'Noto Serif TC',serif; font-weight:800; font-size:18px;
+    margin-bottom:14px; color:var(--ink);
+  }
+  .add-entry-label{
+    display:block; font-size:12px; font-weight:700; color:var(--ink-soft);
+    margin:12px 0 4px;
+  }
+  .add-entry-error{color:var(--seal-red); font-size:12.5px; min-height:18px; margin-top:6px;}
 
   .toolbar{
     display:flex;
@@ -788,6 +821,24 @@
 <div class="lightbox-overlay" id="lightboxOverlay">
   <button class="lightbox-close" id="lightboxClose">×</button>
   <img id="lightboxImg" src="" alt="放大檢視">
+</div>
+
+<div class="add-entry-overlay" id="addEntryOverlay" style="display:none;">
+  <div class="add-entry-panel">
+    <div class="add-entry-head">
+      <span id="addEntryTitle">新增一則</span>
+      <button id="addEntryClose" class="clear-range">✕ 關閉</button>
+    </div>
+    <label class="add-entry-label">字號／案號（必填，例如：釋字第814號）</label>
+    <input type="text" id="addEntryNo" class="login-input" placeholder="釋字第814號">
+    <label class="add-entry-label">標題（選填）</label>
+    <input type="text" id="addEntryTitleInput" class="login-input" placeholder="例如：○○案">
+    <label class="add-entry-label">章節分類（選填，不填會歸到「未分類」）</label>
+    <input type="text" id="addEntryChapter" class="login-input" placeholder="例如：平等權" list="addEntryChapterList">
+    <datalist id="addEntryChapterList"></datalist>
+    <div class="add-entry-error" id="addEntryError"></div>
+    <button id="addEntrySubmit" class="import-file-btn" style="width:100%;">新增</button>
+  </div>
 </div>
 
 <script type="module">
@@ -1384,6 +1435,7 @@ function buildAppShell(){
       <h1 id="lawTitle">法規名稱</h1>
       <p class="law-desc" id="lawDesc">說明</p>
       <a class="source-link" href="https://law.moj.gov.tw/Index.aspx" target="_blank" rel="noopener">法源查證：全國法規資料庫 law.moj.gov.tw ↗</a>
+      <button id="addEntryBtn" class="add-entry-btn" style="display:none;">➕ 新增一則</button>
     </div>
     <details class="outline-block" id="outlineBlock" open>
       <summary id="outlineSummary">📖 編章節目錄</summary>
@@ -1659,6 +1711,75 @@ function buildZip(files){
   return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
 }
 
+// ---------- Add a new entry directly (大法官解釋 / 憲法法庭判決) without re-importing JSON ----------
+document.getElementById('addEntryBtn').addEventListener('click', ()=>{
+  const overlay = document.getElementById('addEntryOverlay');
+  document.getElementById('addEntryTitle').textContent = currentLaw === 'concourtjudg' ? '新增一則判決' : '新增一則解釋';
+  document.getElementById('addEntryNo').value = '';
+  document.getElementById('addEntryTitleInput').value = '';
+  document.getElementById('addEntryChapter').value = '';
+  document.getElementById('addEntryError').textContent = '';
+  const dl = document.getElementById('addEntryChapterList');
+  dl.innerHTML = (DATA[currentLaw].chapters || []).map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  overlay.style.display = 'flex';
+  document.getElementById('addEntryNo').focus();
+});
+document.getElementById('addEntryClose').addEventListener('click', ()=>{
+  document.getElementById('addEntryOverlay').style.display = 'none';
+});
+document.getElementById('addEntryOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'addEntryOverlay') document.getElementById('addEntryOverlay').style.display = 'none';
+});
+
+document.getElementById('addEntrySubmit').addEventListener('click', async ()=>{
+  const no = document.getElementById('addEntryNo').value.trim();
+  const title = document.getElementById('addEntryTitleInput').value.trim();
+  const chapter = document.getElementById('addEntryChapter').value.trim() || '未分類（自行新增）';
+  const errEl = document.getElementById('addEntryError');
+  if(!no){
+    errEl.textContent = '請填寫字號／案號';
+    return;
+  }
+  const law = DATA[currentLaw];
+  if(law.articles.some(a => a.no === no)){
+    errEl.textContent = '這個字號已經存在了，換一個或直接去該則編輯';
+    return;
+  }
+  errEl.textContent = '';
+  const newArticle = {
+    no, title, chapter,
+    original: [''],
+    english: [],
+    note: '',
+    exam: '',
+    answerCopy: ''
+  };
+  law.articles.push(newArticle);
+  if(!law.chapters.includes(chapter)) law.chapters.push(chapter);
+  law.outline = law.outline || [];
+  const existingRow = law.outline.find(r => r.label === chapter && r.level === 1);
+  if(existingRow){
+    existingRow.range = [existingRow.range[0], no];
+  } else {
+    law.outline.push({ level: 1, label: chapter, range: [no, no] });
+  }
+  try{
+    await window.storage.set(`lawcontent::${currentLaw}`, JSON.stringify(law), false);
+  }catch(e){
+    errEl.textContent = '儲存失敗：' + (e.message || String(e));
+    return;
+  }
+  document.getElementById('addEntryOverlay').style.display = 'none';
+  currentChapter = 'all';
+  currentRange = null;
+  currentQuery = no;
+  render();
+  setTimeout(()=>{
+    const si = document.getElementById('searchInput');
+    if(si) si.value = no;
+  }, 50);
+});
+
 document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('exportDataBtn');
   const label = document.getElementById('exportProgressLabel');
@@ -1832,6 +1953,10 @@ function render(){
   document.getElementById('lawTitle').textContent = law.title;
   document.getElementById('lawDesc').textContent = `共 ${law.articles.length} 條，${law.chapters.length} 個章節分類`;
 
+  const addBtn = document.getElementById('addEntryBtn');
+  addBtn.style.display = EDITABLE_ORIGINAL_LAWS.includes(currentLaw) ? 'inline-block' : 'none';
+  addBtn.textContent = currentLaw === 'concourtjudg' ? '➕ 新增一則判決' : '➕ 新增一則解釋';
+
   const chapterFilter = document.getElementById('chapterFilter');
   chapterFilter.innerHTML = '';
   const allChip = document.createElement('button');
@@ -1998,6 +2123,7 @@ function renderCards(){
           ${answerSeeded ? '<span class="has-note-badge">✍ 已帶入抄答案</span>' : ''}
           ${examSeeded ? '<span class="has-note-badge">📎 已帶入考題筆記</span>' : ''}
           <button class="tested-toggle state-${ttState}" id="${ttId}" data-law="${currentLaw}" data-no="${a.no}">${testedLabel(ttState)}</button>
+          ${editableOriginal ? `<button class="pdf-upload-btn remove-pdf" data-delete-entry="1" data-law="${currentLaw}" data-no="${a.no}">🗑 刪除此則</button>` : ''}
         </div>
       </div>
       <div class="divider"></div>

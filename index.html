@@ -1509,6 +1509,21 @@ function buildAppShell(){
     queueSave('unclassified', lawKey, '', undoVal, 'unclassified_ta');
   });
   wireFmtButtons(document);
+
+  // ---------- Add a new entry directly (大法官解釋 / 憲法法庭判決) without re-importing JSON ----------
+  // (bound here, not at top level, because #addEntryBtn only exists after this template renders)
+  document.getElementById('addEntryBtn').addEventListener('click', ()=>{
+    const overlay = document.getElementById('addEntryOverlay');
+    document.getElementById('addEntryTitle').textContent = currentLaw === 'concourtjudg' ? '新增一則判決' : '新增一則解釋';
+    document.getElementById('addEntryNo').value = '';
+    document.getElementById('addEntryTitleInput').value = '';
+    document.getElementById('addEntryChapter').value = '';
+    document.getElementById('addEntryError').textContent = '';
+    const dl = document.getElementById('addEntryChapterList');
+    dl.innerHTML = (DATA[currentLaw].chapters || []).map(c=>`<option value="${escapeHtml(c)}">`).join('');
+    overlay.style.display = 'flex';
+    document.getElementById('addEntryNo').focus();
+  });
 }
 
 function buildLawNav(){
@@ -1711,19 +1726,7 @@ function buildZip(files){
   return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
 }
 
-// ---------- Add a new entry directly (大法官解釋 / 憲法法庭判決) without re-importing JSON ----------
-document.getElementById('addEntryBtn').addEventListener('click', ()=>{
-  const overlay = document.getElementById('addEntryOverlay');
-  document.getElementById('addEntryTitle').textContent = currentLaw === 'concourtjudg' ? '新增一則判決' : '新增一則解釋';
-  document.getElementById('addEntryNo').value = '';
-  document.getElementById('addEntryTitleInput').value = '';
-  document.getElementById('addEntryChapter').value = '';
-  document.getElementById('addEntryError').textContent = '';
-  const dl = document.getElementById('addEntryChapterList');
-  dl.innerHTML = (DATA[currentLaw].chapters || []).map(c=>`<option value="${escapeHtml(c)}">`).join('');
-  overlay.style.display = 'flex';
-  document.getElementById('addEntryNo').focus();
-});
+// ---------- Add-entry modal: close/submit handlers (these elements are static, so this is safe at top level) ----------
 document.getElementById('addEntryClose').addEventListener('click', ()=>{
   document.getElementById('addEntryOverlay').style.display = 'none';
 });

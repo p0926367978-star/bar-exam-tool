@@ -1212,9 +1212,10 @@ async function showActivityLogOverlay(){
   overlay.style.display = 'flex';
   resultsEl.innerHTML = `<div class="empty-state">載入中…</div>`;
   try{
-    const listRes = await window.storage.list('activitylog::', false);
+    const alPrefix = 'activitylog::';
+    const listRes = await window.storage.list(alPrefix, false);
     const keys = (listRes && listRes.keys) || [];
-    const dates = keys.slice().sort().reverse();
+    const dates = keys.map(k => k.startsWith(alPrefix) ? k.slice(alPrefix.length) : k).sort().reverse();
     if(dates.length === 0){
       resultsEl.innerHTML = `<div class="empty-state"><div class="big">還沒有紀錄</div>開始寫筆記之後，這裡就會依日期顯示你動過的條文</div>`;
       return;
@@ -1223,7 +1224,7 @@ async function showActivityLogOverlay(){
     for(const date of dates){
       let entries = {};
       try{
-        const res = await window.storage.get(`activitylog::${date}`, false);
+        const res = await window.storage.get(`${alPrefix}${date}`, false);
         if(res && res.value) entries = JSON.parse(res.value);
       }catch(e){}
       const items = Object.values(entries).sort((a,b)=>b.time - a.time);
@@ -2956,14 +2957,16 @@ async function tryLoadDataFromStorage(){
   const loaded = {};
   lastStorageError = null;
   try{
-    const listRes = await window.storage.list('lawcontent::', false);
+    const prefix = 'lawcontent::';
+    const listRes = await window.storage.list(prefix, false);
     const keys = (listRes && listRes.keys) || [];
     if(keys.length === 0) return null;
-    for(const key of keys){
+    for(const fullKey of keys){
       try{
-        const res = await window.storage.get(`lawcontent::${key}`, false);
+        const res = await window.storage.get(fullKey, false);
         if(res && typeof res.value === 'string'){
-          loaded[key] = JSON.parse(res.value);
+          const shortKey = fullKey.startsWith(prefix) ? fullKey.slice(prefix.length) : fullKey;
+          loaded[shortKey] = JSON.parse(res.value);
         }
       }catch(e){ /* skip this one key, keep whatever else loaded fine */ }
     }

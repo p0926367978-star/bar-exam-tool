@@ -153,9 +153,21 @@
   }
 
   .law-nav{list-style:none;margin:0;padding:0;flex:1;}
-  .law-item{margin-bottom:4px;}
+  .law-item{margin-bottom:4px; display:flex; align-items:stretch; gap:4px;}
+  .law-delete-btn{
+    flex-shrink:0;
+    width:32px;
+    background:transparent;
+    border:1px solid transparent;
+    border-radius:6px;
+    color:rgba(246,241,228,0.35);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .law-delete-btn:hover{background:rgba(196,74,58,0.15); border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
   .law-btn{
-    width:100%;
+    flex:1;
+    min-width:0;
     text-align:left;
     background:transparent;
     border:none;
@@ -2034,9 +2046,67 @@ function buildLawNav(){
       if(si) si.value = '';
       render();
     });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'law-delete-btn';
+    delBtn.title = `刪除「${title}」這個科目`;
+    delBtn.textContent = '🗑';
+    delBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      deleteLawSubject(key, title);
+    });
     li.appendChild(btn);
+    li.appendChild(delBtn);
     lawNav.appendChild(li);
   });
+}
+
+async function deleteLawSubject(key, title){
+  const confirmText = prompt(`確定要刪除「${title}」嗎？這會清掉這科所有的條文、筆記、圖片、PDF附件等資料，無法復原。\n\n請輸入「刪除」兩個字確認：`);
+  if(confirmText !== '刪除') return;
+
+  const label = document.getElementById('exportProgressLabel');
+  if(label) label.textContent = `刪除「${title}」中…`;
+
+  const perArticlePrefixes = [
+    'note::', 'exam::', 'answerCopy::', 'originalText::',
+    'origHighlight::', 'engHighlight::', 'tested::',
+    'examimg::', 'pdfmeta::', 'attachpdfmeta::',
+    'pdfchunk::', 'attachpdfchunk::'
+  ];
+  try{
+    for(const prefix of perArticlePrefixes){
+      const fullPrefix = `${prefix}${key}::`;
+      try{
+        const listRes = await window.storage.list(fullPrefix, false);
+        const keys = (listRes && listRes.keys) || [];
+        for(const k of keys){
+          try{ await window.storage.delete(k, false); }catch(e){}
+        }
+      }catch(e){}
+    }
+    try{ await window.storage.delete(`unclassified::${key}`, false); }catch(e){}
+    await window.storage.delete(`lawcontent::${key}`, false);
+
+    delete DATA[key];
+    lawKeys = Object.keys(DATA);
+    if(currentLaw === key){
+      currentLaw = lawKeys[0] || null;
+      currentChapter = 'all';
+      currentQuery = '';
+      currentRange = null;
+    }
+    if(label) label.textContent = `已刪除「${title}」`;
+    if(currentLaw){
+      render();
+    } else {
+      buildLawNav();
+      document.getElementById('cardList').innerHTML = `<div class="empty-state"><div class="big">已經沒有任何科目了</div>用「➕ 新增科目 / 匯入新資料」再匯入一次</div>`;
+    }
+  }catch(err){
+    if(label) label.textContent = '刪除失敗：' + (err.message || String(err));
+  }finally{
+    setTimeout(()=>{ if(label) label.textContent=''; }, 5000);
+  }
 }
 
 document.getElementById('lawSearch').addEventListener('input', (e)=>{

@@ -563,6 +563,9 @@
     color:#a89f8c;
   }
   .note-area ul{margin:0; padding-left:22px;}
+  .note-area ul ul{padding-left:20px; margin-top:2px;}
+  .note-area ul ul{list-style-type:circle;}
+  .note-area ul ul ul{list-style-type:square;}
   .note-area li{margin:2px 0;}
   .note-area s, .note-area strike{color:#a89f8c;}
 
@@ -1608,6 +1611,30 @@ function refreshThumbs(lawKey, no){
 // Uses event delegation on document (always exists), so this is safe to attach
 // at the top level even for note areas that only appear later inside dynamically
 // rendered cards.
+// ---------- Tab key indents/outdents list items, for multi-level 分點 ----------
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Tab') return;
+  const target = e.target;
+  if(!target || !target.classList || !target.classList.contains('note-area')) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0) return;
+  // only take over Tab when the cursor is actually inside a list item;
+  // otherwise let Tab behave normally (e.g. move focus away)
+  let node = sel.getRangeAt(0).startContainer;
+  let inListItem = false;
+  while(node && node !== target){
+    if(node.nodeName === 'LI'){ inListItem = true; break; }
+    node = node.parentNode;
+  }
+  if(!inListItem) return;
+  e.preventDefault();
+  try{
+    document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+  }catch(err){}
+  target.dispatchEvent(new Event('input', {bubbles:true}));
+});
+
 document.addEventListener('paste', (e)=>{
   const target = e.target;
   if(!target || !target.classList || !target.classList.contains('note-area')) return;

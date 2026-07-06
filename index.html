@@ -957,7 +957,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc, deleteDoc,
-  collection, query, where, getDocs, documentId
+  collection, query, where, getDocs, documentId,
+  orderBy, startAt, endAt
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
@@ -980,6 +981,7 @@ try{
   window.__firebase = {
     db, auth, doc, getDoc, setDoc, deleteDoc,
     collection, query, where, getDocs, documentId,
+    orderBy, startAt, endAt,
     onAuthStateChanged, signInWithEmailAndPassword,
     createUserWithEmailAndPassword, signOut
   };
@@ -1053,7 +1055,7 @@ function makeFirestoreBackend(uid){
     },
     async list(prefix, shared){
       const p = prefix || '';
-      const q = fb.query(kvColl, fb.where(fb.documentId(), '>=', p), fb.where(fb.documentId(), '<', p + '\uf8ff'));
+      const q = fb.query(kvColl, fb.orderBy(fb.documentId()), fb.startAt(p), fb.endAt(p + '\uf8ff'));
       const snaps = await fb.getDocs(q);
       const keys = [];
       snaps.forEach(s => keys.push(s.id));
@@ -1077,6 +1079,7 @@ const testedCache = {};
 const testedLoaded = {};
 const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, origHighlight: {}, engHighlight: {} };   // field -> lawKey -> { [no]: overriddenValue }
 const EDITABLE_ORIGINAL_LAWS = ["justiceinterp", "concourtjudg"];
+const UNCLASSIFIED_IMG_NO = "（整體筆記）"; // sentinel "no" for unclassified-note images, never collides with a real article no
 const fieldLoaded = { note: {}, exam: {} };
 
 function testedKeyPrefix(lawKey){ return `tested::${lawKey}::`; }
@@ -1939,6 +1942,8 @@ function buildAppShell(){
           <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
         </div>
         <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
+        <div class="exam-images-row" id="imgs_unclassified"></div>
+        <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
       </div>
     </details>
     <div class="toolbar">
@@ -2500,7 +2505,13 @@ function render(){
     ensurePdfMetaLoaded(loadingLaw),
     ensureAttachMetaLoaded(loadingLaw)
   ]).then(()=>{
-    if(currentLaw === loadingLaw) renderCards();
+    if(currentLaw !== loadingLaw) return;
+    renderCards();
+    const imgsRow = document.getElementById('imgs_unclassified');
+    if(imgsRow){
+      imgsRow.innerHTML = thumbsHtml(loadingLaw, UNCLASSIFIED_IMG_NO);
+      wireThumbRow(imgsRow);
+    }
   });
 }
 
@@ -2941,19 +2952,22 @@ backToTopBtn.addEventListener('click', ()=>{
 // ---------- Bootstrap: load law content from storage, or ask user to import it once ----------
 async function tryLoadDataFromStorage(){
   const loaded = {};
-  for(const key of LAW_KEYS_EXPECTED){
-    try{
-      const res = await window.storage.get(`lawcontent::${key}`, false);
-      if(res && typeof res.value === 'string'){
-        loaded[key] = JSON.parse(res.value);
-      } else {
-        return null;
-      }
-    }catch(e){
-      return null;
+  try{
+    const listRes = await window.storage.list('lawcontent::', false);
+    const keys = (listRes && listRes.keys) || [];
+    if(keys.length === 0) return null;
+    for(const key of keys){
+      try{
+        const res = await window.storage.get(`lawcontent::${key}`, false);
+        if(res && typeof res.value === 'string'){
+          loaded[key] = JSON.parse(res.value);
+        }
+      }catch(e){ /* skip this one, keep whatever else loaded fine */ }
     }
+  }catch(e){
+    return null;
   }
-  return loaded;
+  return Object.keys(loaded).length > 0 ? loaded : null;
 }
 
 async function saveOneLawToStorage(key, lawObj, index, total){
@@ -2982,8 +2996,8 @@ function showImportScreen(errorMsg){
       <div class="import-card">
         <div class="import-icon">⚖</div>
         <h2>請先匯入你的法規資料檔</h2>
-        <p>資料已經拆成 19 個較小的檔案（每部法規一個）。請把它們全部解壓縮到同一個資料夾，
-        點下方按鈕後，在檔案選擇視窗裡<b>全選這 19 個 .json 檔案</b>（Ctrl/Cmd+A）一次匯入。<br>
+        <p>把你要用的科目 .json 檔案解壓縮到同一個資料夾（不一定要全部科目，只匯入你需要的也可以），
+        點下方按鈕後，在檔案選擇視窗裡<b>選取你要匯入的 .json 檔案</b>（可一次選多個）。<br>
         只需要匯入這一次，之後資料會保存在這個 artifact 裡，重新打開不用再匯入。</p>
         ${errorMsg ? `<p class="import-error">匯入失敗：${errorMsg}</p>` : ''}
         <label class="import-file-btn">
@@ -3011,17 +3025,12 @@ function showImportScreen(errorMsg){
         const lawObj = JSON.parse(text);
         await saveOneLawToStorage(key, lawObj, i+1, files.length);
       }
-      // Re-check storage for the FULL expected set (not just this batch), so importing
-      // only newly-added subjects on top of what's already stored still works fine.
+      // Re-check storage for whatever subjects have been imported so far (no fixed
+      // list required — different people can import different combinations of subjects).
       if(label) label.textContent = '確認資料完整性…';
       const complete = await tryLoadDataFromStorage();
       if(!complete){
-        const stillMissing = [];
-        for(const k of LAW_KEYS_EXPECTED){
-          try{ await window.storage.get(`lawcontent::${k}`, false); }
-          catch(e){ stillMissing.push(k); }
-        }
-        showImportScreen(`目前資料庫裡還缺少：${stillMissing.join(', ')}.json，請把這些檔案也匯入`);
+        showImportScreen('沒有偵測到任何有效的科目資料，請確認選取的是正確的 .json 檔案');
         return;
       }
       DATA = complete;

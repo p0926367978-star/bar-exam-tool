@@ -74,6 +74,20 @@
     margin-bottom:16px;
     text-transform:uppercase;
   }
+  .account-badge{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--page-cream);
+    background:rgba(212,175,106,0.12);
+    border:1px solid rgba(212,175,106,0.35);
+    border-radius:8px;
+    padding:8px 10px;
+    margin-bottom:14px;
+    word-break:break-all;
+  }
+  .account-badge .acc-icon{flex-shrink:0; color:var(--gold-bright);}
   .cover-search{
     margin-bottom:14px;
   }
@@ -549,6 +563,9 @@
     color:#a89f8c;
   }
   .note-area ul{margin:0; padding-left:22px;}
+  .note-area ul ul{padding-left:20px; margin-top:2px;}
+  .note-area ul ul{list-style-type:circle;}
+  .note-area ul ul ul{list-style-type:square;}
   .note-area li{margin:2px 0;}
   .note-area s, .note-area strike{color:#a89f8c;}
 
@@ -892,6 +909,7 @@
 <nav class="cover">
   <div class="brand"><span class="gold-dot">⚖</span>六法工具箱</div>
   <div class="brand-sub">My Bar Exam Codex</div>
+  <div class="account-badge" id="accountBadge" style="display:none;"></div>
   <div class="cover-search">
     <input id="lawSearch" type="text" placeholder="搜尋科目…">
   </div>
@@ -1593,6 +1611,72 @@ function refreshThumbs(lawKey, no){
 // Uses event delegation on document (always exists), so this is safe to attach
 // at the top level even for note areas that only appear later inside dynamically
 // rendered cards.
+// ---------- Tab key indents/outdents list items, for multi-level 分點 ----------
+// Manually restructures the <li>/<ul> DOM instead of relying on execCommand
+// 'indent'/'outdent', since browser support for those on list items is inconsistent.
+function findEnclosingLi(node, boundary){
+  while(node && node !== boundary){
+    if(node.nodeName === 'LI') return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function indentLi(li){
+  const prevLi = li.previousElementSibling;
+  if(!prevLi || prevLi.nodeName !== 'LI') return false; // first item in its list, nothing to nest under
+  let subUl = null;
+  for(const child of prevLi.children){
+    if(child.nodeName === 'UL' || child.nodeName === 'OL'){ subUl = child; break; }
+  }
+  if(!subUl){
+    subUl = document.createElement('ul');
+    prevLi.appendChild(subUl);
+  }
+  subUl.appendChild(li);
+  return true;
+}
+
+function outdentLi(li){
+  const parentUl = li.parentElement;
+  if(!parentUl || (parentUl.nodeName !== 'UL' && parentUl.nodeName !== 'OL')) return false;
+  const grandLi = parentUl.parentElement;
+  if(!grandLi || grandLi.nodeName !== 'LI') return false; // already top-level
+  const outerList = grandLi.parentElement;
+  outerList.insertBefore(li, grandLi.nextSibling);
+  if(parentUl.children.length === 0) parentUl.remove();
+  return true;
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Tab') return;
+  const target = e.target;
+  if(!target || !target.classList || !target.classList.contains('note-area')) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0) return;
+  const li = findEnclosingLi(sel.getRangeAt(0).startContainer, target);
+  if(!li) return; // cursor isn't inside a list item — let Tab behave normally
+  e.preventDefault();
+
+  // remember where the cursor was within this <li> so we can restore it after moving the node
+  const range = sel.getRangeAt(0);
+  const savedContainer = range.startContainer;
+  const savedOffset = range.startOffset;
+
+  const moved = e.shiftKey ? outdentLi(li) : indentLi(li);
+  if(moved){
+    try{
+      const newRange = document.createRange();
+      newRange.setStart(savedContainer, savedOffset);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }catch(err){}
+    target.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+});
+
 document.addEventListener('paste', (e)=>{
   const target = e.target;
   if(!target || !target.classList || !target.classList.contains('note-area')) return;
@@ -3222,9 +3306,16 @@ async function initStorageBackend(){
     window.__firebase.onAuthStateChanged(window.__firebase.auth, (user)=>{
       if(user){
         window.storage = makeFirestoreBackend(user.uid);
+        const badge = document.getElementById('accountBadge');
+        if(badge){
+          badge.style.display = 'flex';
+          badge.innerHTML = `<span class="acc-icon">👤</span><span>${escapeHtml(user.email || '已登入')}</span>`;
+        }
         runBootstrap();
       } else {
         logoutBtn.style.display = 'none';
+        const badge = document.getElementById('accountBadge');
+        if(badge) badge.style.display = 'none';
         showLoginScreen(null);
       }
     });

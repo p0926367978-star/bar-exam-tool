@@ -2950,8 +2950,11 @@ backToTopBtn.addEventListener('click', ()=>{
 });
 
 // ---------- Bootstrap: load law content from storage, or ask user to import it once ----------
+let lastStorageError = null;
+
 async function tryLoadDataFromStorage(){
   const loaded = {};
+  lastStorageError = null;
   try{
     const listRes = await window.storage.list('lawcontent::', false);
     const keys = (listRes && listRes.keys) || [];
@@ -2962,9 +2965,10 @@ async function tryLoadDataFromStorage(){
         if(res && typeof res.value === 'string'){
           loaded[key] = JSON.parse(res.value);
         }
-      }catch(e){ /* skip this one, keep whatever else loaded fine */ }
+      }catch(e){ /* skip this one key, keep whatever else loaded fine */ }
     }
   }catch(e){
+    lastStorageError = e;
     return null;
   }
   return Object.keys(loaded).length > 0 ? loaded : null;
@@ -3030,7 +3034,8 @@ function showImportScreen(errorMsg){
       if(label) label.textContent = '確認資料完整性…';
       const complete = await tryLoadDataFromStorage();
       if(!complete){
-        showImportScreen('沒有偵測到任何有效的科目資料，請確認選取的是正確的 .json 檔案');
+        const detail = lastStorageError ? `（底層錯誤：${lastStorageError.message || lastStorageError}）` : '';
+        showImportScreen(`沒有偵測到任何有效的科目資料，請確認選取的是正確的 .json 檔案${detail}`);
         return;
       }
       DATA = complete;

@@ -1601,7 +1601,10 @@ function thumbsHtml(lawKey, no){
 }
 
 function refreshThumbs(lawKey, no){
-  const el = document.getElementById(`imgs_${cssSafe(lawKey)}_${cssSafe(no)}`);
+  // the unclassified-note image row has a fixed id that doesn't follow the per-article pattern
+  const el = (no === UNCLASSIFIED_IMG_NO)
+    ? document.getElementById('imgs_unclassified')
+    : document.getElementById(`imgs_${cssSafe(lawKey)}_${cssSafe(no)}`);
   if(!el) return;
   el.innerHTML = thumbsHtml(lawKey, no);
   wireThumbRow(el);
@@ -2041,6 +2044,7 @@ function buildAppShell(){
         <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
         <div class="exam-images-row" id="imgs_unclassified"></div>
         <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
+        <div id="unclassifiedAttachWrap"></div>
       </div>
     </details>
     <div class="toolbar">
@@ -2667,7 +2671,74 @@ function render(){
       imgsRow.innerHTML = thumbsHtml(loadingLaw, UNCLASSIFIED_IMG_NO);
       wireThumbRow(imgsRow);
     }
+    renderUnclassifiedAttach(loadingLaw);
   });
+}
+
+// ---------- PDF attachment for the unclassified-notes block ----------
+function renderUnclassifiedAttach(lawKey){
+  const wrap = document.getElementById('unclassifiedAttachWrap');
+  if(!wrap) return;
+  const meta = getAttachMeta(lawKey, UNCLASSIFIED_IMG_NO);
+  if(meta){
+    wrap.innerHTML = `
+      <div class="attach-pdf-wrap">
+        <div class="attach-pdf-head">
+          <span>📎 附件：${escapeHtml(meta.filename)}</span>
+          <button class="pdf-upload-btn remove-pdf" id="unclassifiedAttachRemove">✕ 移除附件</button>
+        </div>
+        <div class="pdf-preview-box attach-pdf-box" id="unclassifiedAttachBox">
+          <div class="pdf-loading-msg">PDF 載入中…</div>
+        </div>
+      </div>`;
+    document.getElementById('unclassifiedAttachRemove').addEventListener('click', async ()=>{
+      if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
+      await deleteAttach(lawKey, UNCLASSIFIED_IMG_NO);
+      renderUnclassifiedAttach(lawKey);
+    });
+    (async ()=>{
+      try{
+        const dataUrl = await loadAttachData(lawKey, UNCLASSIFIED_IMG_NO);
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(!dataUrl || !box) return;
+        box.innerHTML = `
+          <iframe src="${dataUrl}#toolbar=0" title="附件 PDF 預覽"></iframe>
+          <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+        `;
+      }catch(e){
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(box) box.innerHTML = `<div class="pdf-loading-msg">附件 PDF 載入失敗</div>`;
+      }
+    })();
+  } else {
+    wrap.innerHTML = `<button type="button" class="pdf-upload-btn" id="unclassifiedAttachUpload" style="margin-top:8px;">📎 上傳附件 PDF（學者文章等）</button>`;
+    document.getElementById('unclassifiedAttachUpload').addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳附件 PDF 中… 0%`;
+          await saveAttachFile(lawKey, UNCLASSIFIED_IMG_NO, file, (done, total)=>{
+            if(label) label.textContent = `上傳附件 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = '附件 PDF 上傳完成';
+          renderUnclassifiedAttach(lawKey);
+        }catch(err){
+          if(label) label.textContent = '附件 PDF 上傳失敗：' + (err.message || String(err));
+        }finally{
+          setTimeout(()=>{ if(label) label.textContent=''; }, 5000);
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
 }
 
 function renderOutline(lawKey){

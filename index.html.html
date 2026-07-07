@@ -1601,7 +1601,10 @@ function thumbsHtml(lawKey, no){
 }
 
 function refreshThumbs(lawKey, no){
-  const el = document.getElementById(`imgs_${cssSafe(lawKey)}_${cssSafe(no)}`);
+  // the unclassified-note image row has a fixed id that doesn't follow the per-article pattern
+  const el = (no === UNCLASSIFIED_IMG_NO)
+    ? document.getElementById('imgs_unclassified')
+    : document.getElementById(`imgs_${cssSafe(lawKey)}_${cssSafe(no)}`);
   if(!el) return;
   el.innerHTML = thumbsHtml(lawKey, no);
   wireThumbRow(el);
@@ -1612,6 +1615,42 @@ function refreshThumbs(lawKey, no){
 // at the top level even for note areas that only appear later inside dynamically
 // rendered cards.
 // ---------- Tab key indents/outdents list items, for multi-level 分點 ----------
+// Manually restructures the <li>/<ul> DOM instead of relying on execCommand
+// 'indent'/'outdent', since browser support for those on list items is inconsistent.
+function findEnclosingLi(node, boundary){
+  while(node && node !== boundary){
+    if(node.nodeName === 'LI') return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function indentLi(li){
+  const prevLi = li.previousElementSibling;
+  if(!prevLi || prevLi.nodeName !== 'LI') return false; // first item in its list, nothing to nest under
+  let subUl = null;
+  for(const child of prevLi.children){
+    if(child.nodeName === 'UL' || child.nodeName === 'OL'){ subUl = child; break; }
+  }
+  if(!subUl){
+    subUl = document.createElement('ul');
+    prevLi.appendChild(subUl);
+  }
+  subUl.appendChild(li);
+  return true;
+}
+
+function outdentLi(li){
+  const parentUl = li.parentElement;
+  if(!parentUl || (parentUl.nodeName !== 'UL' && parentUl.nodeName !== 'OL')) return false;
+  const grandLi = parentUl.parentElement;
+  if(!grandLi || grandLi.nodeName !== 'LI') return false; // already top-level
+  const outerList = grandLi.parentElement;
+  outerList.insertBefore(li, grandLi.nextSibling);
+  if(parentUl.children.length === 0) parentUl.remove();
+  return true;
+}
+
 document.addEventListener('keydown', (e)=>{
   if(e.key !== 'Tab') return;
   const target = e.target;
@@ -1619,20 +1658,26 @@ document.addEventListener('keydown', (e)=>{
   if(target.getAttribute('contenteditable') !== 'true') return;
   const sel = window.getSelection();
   if(!sel || sel.rangeCount === 0) return;
-  // only take over Tab when the cursor is actually inside a list item;
-  // otherwise let Tab behave normally (e.g. move focus away)
-  let node = sel.getRangeAt(0).startContainer;
-  let inListItem = false;
-  while(node && node !== target){
-    if(node.nodeName === 'LI'){ inListItem = true; break; }
-    node = node.parentNode;
-  }
-  if(!inListItem) return;
+  const li = findEnclosingLi(sel.getRangeAt(0).startContainer, target);
+  if(!li) return; // cursor isn't inside a list item — let Tab behave normally
   e.preventDefault();
-  try{
-    document.execCommand(e.shiftKey ? 'outdent' : 'indent');
-  }catch(err){}
-  target.dispatchEvent(new Event('input', {bubbles:true}));
+
+  // remember where the cursor was within this <li> so we can restore it after moving the node
+  const range = sel.getRangeAt(0);
+  const savedContainer = range.startContainer;
+  const savedOffset = range.startOffset;
+
+  const moved = e.shiftKey ? outdentLi(li) : indentLi(li);
+  if(moved){
+    try{
+      const newRange = document.createRange();
+      newRange.setStart(savedContainer, savedOffset);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }catch(err){}
+    target.dispatchEvent(new Event('input', {bubbles:true}));
+  }
 });
 
 document.addEventListener('paste', (e)=>{
@@ -1999,6 +2044,7 @@ function buildAppShell(){
         <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
         <div class="exam-images-row" id="imgs_unclassified"></div>
         <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
+        <div id="unclassifiedAttachWrap"></div>
       </div>
     </details>
     <div class="toolbar">
@@ -2625,7 +2671,74 @@ function render(){
       imgsRow.innerHTML = thumbsHtml(loadingLaw, UNCLASSIFIED_IMG_NO);
       wireThumbRow(imgsRow);
     }
+    renderUnclassifiedAttach(loadingLaw);
   });
+}
+
+// ---------- PDF attachment for the unclassified-notes block ----------
+function renderUnclassifiedAttach(lawKey){
+  const wrap = document.getElementById('unclassifiedAttachWrap');
+  if(!wrap) return;
+  const meta = getAttachMeta(lawKey, UNCLASSIFIED_IMG_NO);
+  if(meta){
+    wrap.innerHTML = `
+      <div class="attach-pdf-wrap">
+        <div class="attach-pdf-head">
+          <span>📎 附件：${escapeHtml(meta.filename)}</span>
+          <button class="pdf-upload-btn remove-pdf" id="unclassifiedAttachRemove">✕ 移除附件</button>
+        </div>
+        <div class="pdf-preview-box attach-pdf-box" id="unclassifiedAttachBox">
+          <div class="pdf-loading-msg">PDF 載入中…</div>
+        </div>
+      </div>`;
+    document.getElementById('unclassifiedAttachRemove').addEventListener('click', async ()=>{
+      if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
+      await deleteAttach(lawKey, UNCLASSIFIED_IMG_NO);
+      renderUnclassifiedAttach(lawKey);
+    });
+    (async ()=>{
+      try{
+        const dataUrl = await loadAttachData(lawKey, UNCLASSIFIED_IMG_NO);
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(!dataUrl || !box) return;
+        box.innerHTML = `
+          <iframe src="${dataUrl}#toolbar=0" title="附件 PDF 預覽"></iframe>
+          <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+        `;
+      }catch(e){
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(box) box.innerHTML = `<div class="pdf-loading-msg">附件 PDF 載入失敗</div>`;
+      }
+    })();
+  } else {
+    wrap.innerHTML = `<button type="button" class="pdf-upload-btn" id="unclassifiedAttachUpload" style="margin-top:8px;">📎 上傳附件 PDF（學者文章等）</button>`;
+    document.getElementById('unclassifiedAttachUpload').addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳附件 PDF 中… 0%`;
+          await saveAttachFile(lawKey, UNCLASSIFIED_IMG_NO, file, (done, total)=>{
+            if(label) label.textContent = `上傳附件 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = '附件 PDF 上傳完成';
+          renderUnclassifiedAttach(lawKey);
+        }catch(err){
+          if(label) label.textContent = '附件 PDF 上傳失敗：' + (err.message || String(err));
+        }finally{
+          setTimeout(()=>{ if(label) label.textContent=''; }, 5000);
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
 }
 
 function renderOutline(lawKey){

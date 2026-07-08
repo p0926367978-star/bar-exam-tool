@@ -2574,7 +2574,7 @@ document.getElementById('addMoreLawsInput').addEventListener('change', async (e)
       const key = file.name.replace(/\.json$/i, '');
       label.textContent = `新增中… ${i+1} / ${files.length}（${file.name}）`;
       const text = await file.text();
-      const lawObj = JSON.parse(text);
+      const lawObj = normalizeLawObject(key, JSON.parse(text));
       await window.storage.set(`lawcontent::${key}`, JSON.stringify(lawObj), false);
       DATA[key] = lawObj; // make it available immediately without needing a reload
     }
@@ -3286,7 +3286,11 @@ async function tryLoadDataFromStorage(){
         const res = await window.storage.get(fullKey, false);
         if(res && typeof res.value === 'string'){
           const shortKey = fullKey.startsWith(prefix) ? fullKey.slice(prefix.length) : fullKey;
-          loaded[shortKey] = JSON.parse(res.value);
+          try{
+            loaded[shortKey] = normalizeLawObject(shortKey, JSON.parse(res.value));
+          }catch(badLaw){
+            console.warn(`科目「${shortKey}」的資料格式無效，已略過載入：`, badLaw.message);
+          }
         }
       }catch(e){ /* skip this one key, keep whatever else loaded fine */ }
     }
@@ -3297,7 +3301,50 @@ async function tryLoadDataFromStorage(){
   return Object.keys(loaded).length > 0 ? loaded : null;
 }
 
+// Validate + normalize an imported law object so a malformed file (e.g. produced by a
+// different tool that doesn't know our schema) can never crash the whole app.
+// Throws a descriptive error if the file is fundamentally not a law-content file;
+// silently fills in any missing optional fields otherwise.
+function normalizeLawObject(key, obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)){
+    throw new Error(`「${key}.json」不是有效的科目資料檔（內容不是物件）`);
+  }
+  if(!Array.isArray(obj.articles) || obj.articles.length === 0){
+    throw new Error(`「${key}.json」缺少 articles 條文陣列，格式不符本工具的科目資料格式`);
+  }
+  obj.title = (typeof obj.title === 'string' && obj.title.trim()) ? obj.title : key;
+  obj.unclassified = typeof obj.unclassified === 'string' ? obj.unclassified : '';
+  if(!Array.isArray(obj.outline)) obj.outline = [];
+  obj.outline = obj.outline.filter(r => r && typeof r === 'object' && typeof r.label === 'string')
+    .map(r => ({ level: Number(r.level) || 1, label: r.label, range: (Array.isArray(r.range) && r.range.length === 2) ? r.range : null }));
+  const chapterSet = [];
+  obj.articles = obj.articles.map((a, i) => {
+    const na = (a && typeof a === 'object') ? a : {};
+    let original = na.original;
+    if(typeof original === 'string') original = [original];
+    if(!Array.isArray(original) || original.length === 0) original = ['（無條文內容）'];
+    original = original.map(p => typeof p === 'string' ? p : String(p ?? ''));
+    const chapter = (typeof na.chapter === 'string' && na.chapter) ? na.chapter : '（無章節標示）';
+    if(!chapterSet.includes(chapter)) chapterSet.push(chapter);
+    return {
+      no: (typeof na.no === 'string' && na.no) ? na.no : `第${i+1}條`,
+      title: typeof na.title === 'string' ? na.title : '',
+      chapter,
+      original,
+      english: Array.isArray(na.english) ? na.english.map(p => typeof p === 'string' ? p : String(p ?? '')) : [],
+      note: typeof na.note === 'string' ? na.note : '',
+      exam: typeof na.exam === 'string' ? na.exam : '',
+      answerCopy: typeof na.answerCopy === 'string' ? na.answerCopy : '',
+      tested: na.tested,
+      images: na.images
+    };
+  });
+  if(!Array.isArray(obj.chapters) || obj.chapters.length === 0) obj.chapters = chapterSet;
+  return obj;
+}
+
 async function saveOneLawToStorage(key, lawObj, index, total){
+  lawObj = normalizeLawObject(key, lawObj);
   await window.storage.set(`lawcontent::${key}`, JSON.stringify(lawObj), false);
   // If this file was produced by "匯出目前資料", it may also carry per-article
   // tested-status and images that live under their own storage keys — restore those too.

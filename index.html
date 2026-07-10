@@ -205,6 +205,19 @@
     cursor:pointer;
   }
   .law-delete-btn:hover{background:rgba(196,74,58,0.15); border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .law-cat-select{
+    flex-shrink:0;
+    width:64px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(246,241,228,0.2);
+    border-radius:6px;
+    color:rgba(246,241,228,0.75);
+    font-size:11px;
+    padding:2px 2px;
+    cursor:pointer;
+  }
+  .law-cat-select:hover{border-color:var(--gold-bright); color:var(--gold-bright);}
+  .law-cat-select option{color:#000;}
   .law-btn{
     flex:1;
     min-width:0;
@@ -2140,6 +2153,7 @@ function buildAppShell(){
 }
 
 // ---------- Sidebar: subjects grouped by legal field, collapsible ----------
+const LAW_CATEGORY_NAMES = ['公法', '民事法', '刑事法', '商法', '財稅法', '其他'];
 const LAW_CATEGORIES = [
   { name: '公法', keys: ['constitution', 'constcourt', 'justiceinterp', 'concourtjudg', 'admproc', 'admpenalty', 'admexec', 'appeal', 'statecomp', 'localgov', '憲法及憲法增修條文', '憲法訴訟法', '大法官解釋', '憲法法庭判決', '行政程序法', '行政罰法', '行政執行法', '訴願法', '國家賠償法', '地方制度法', '行政訴訟法', 'admlitigation'] },
   { name: '民事法', keys: ['civil', 'civpro', 'family', 'compulsory', 'foreign', '民法', '民事訴訟法', '家事事件法', '強制執行法', '涉外民事法律適用法'] },
@@ -2150,12 +2164,51 @@ const LAW_CATEGORIES = [
 // categories the user has manually collapsed/expanded this session (default: all open)
 const categoryCollapsed = {};
 
+// ---------- Manual category override: the user can pin any subject to any category ----------
+// This always wins over the automatic keyword match above, and is stored per-account so it
+// survives reloads and doesn't depend on the html's built-in keyword list ever matching correctly.
+const CATEGORY_PREFIX = 'category::';
+const categoryOverrideCache = {};
+let categoryOverrideLoaded = false;
+
+async function ensureCategoryOverridesLoaded(){
+  if(categoryOverrideLoaded) return;
+  categoryOverrideLoaded = true;
+  try{
+    const listRes = await window.storage.list(CATEGORY_PREFIX, false);
+    const keys = (listRes && listRes.keys) || [];
+    for(const fullKey of keys){
+      try{
+        const res = await window.storage.get(fullKey, false);
+        if(res && typeof res.value === 'string'){
+          categoryOverrideCache[fullKey.slice(CATEGORY_PREFIX.length)] = res.value;
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+}
+
+async function setCategoryOverride(lawKey, categoryName){
+  categoryOverrideCache[lawKey] = categoryName;
+  try{ await window.storage.set(CATEGORY_PREFIX + lawKey, categoryName, false); }catch(e){}
+}
+
+function autoCategoryFor(key){
+  for(const cat of LAW_CATEGORIES){
+    if(cat.keys.includes(key)) return cat.name;
+  }
+  return '其他';
+}
+
+function categoryFor(key){
+  return categoryOverrideCache[key] || autoCategoryFor(key);
+}
+
 function buildLawNav(){
   const lawNav = document.getElementById('lawNav');
   lawNav.innerHTML = '';
 
   const searching = !!lawSearchQuery;
-  const usedKeys = new Set();
 
   const makeLawItem = (key)=>{
     const title = DATA[key].title;
@@ -2174,6 +2227,21 @@ function buildLawNav(){
       if(si) si.value = '';
       render();
     });
+    const catSel = document.createElement('select');
+    catSel.className = 'law-cat-select';
+    catSel.title = `把「${title}」移到別的分類`;
+    LAW_CATEGORY_NAMES.forEach(name=>{
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      if(categoryFor(key) === name) opt.selected = true;
+      catSel.appendChild(opt);
+    });
+    catSel.addEventListener('click', (e)=> e.stopPropagation());
+    catSel.addEventListener('change', async ()=>{
+      await setCategoryOverride(key, catSel.value);
+      buildLawNav();
+    });
     const delBtn = document.createElement('button');
     delBtn.className = 'law-delete-btn';
     delBtn.title = `刪除「${title}」這個科目`;
@@ -2183,6 +2251,7 @@ function buildLawNav(){
       deleteLawSubject(key, title);
     });
     li.appendChild(btn);
+    li.appendChild(catSel);
     li.appendChild(delBtn);
     return li;
   };
@@ -2192,9 +2261,8 @@ function buildLawNav(){
     return DATA[key].title.toLowerCase().includes(lawSearchQuery.toLowerCase());
   };
 
-  for(const cat of LAW_CATEGORIES){
-    const present = cat.keys.filter(k => DATA[k] && matchesSearch(k));
-    cat.keys.forEach(k => { if(DATA[k]) usedKeys.add(k); });
+  for(const catName of LAW_CATEGORY_NAMES){
+    const present = lawKeys.filter(k => categoryFor(k) === catName && matchesSearch(k));
     if(present.length === 0) continue;
 
     const catLi = document.createElement('li');
@@ -2202,10 +2270,10 @@ function buildLawNav(){
     const header = document.createElement('button');
     header.className = 'law-cat-header';
     // while searching, force categories open so matches are visible
-    const collapsed = searching ? false : !!categoryCollapsed[cat.name];
-    header.innerHTML = `<span class="law-cat-arrow">${collapsed ? '▸' : '▾'}</span><span>${cat.name}</span><span class="law-cat-count">${present.length}</span>`;
+    const collapsed = searching ? false : !!categoryCollapsed[catName];
+    header.innerHTML = `<span class="law-cat-arrow">${collapsed ? '▸' : '▾'}</span><span>${catName}</span><span class="law-cat-count">${present.length}</span>`;
     header.addEventListener('click', ()=>{
-      categoryCollapsed[cat.name] = !categoryCollapsed[cat.name];
+      categoryCollapsed[catName] = !categoryCollapsed[catName];
       buildLawNav();
     });
     catLi.appendChild(header);
@@ -2214,29 +2282,6 @@ function buildLawNav(){
       const inner = document.createElement('ul');
       inner.className = 'law-cat-body';
       present.forEach(key => inner.appendChild(makeLawItem(key)));
-      catLi.appendChild(inner);
-    }
-    lawNav.appendChild(catLi);
-  }
-
-  // anything not covered by the category map (e.g. newly imported subjects) goes to 其他
-  const leftovers = lawKeys.filter(k => !usedKeys.has(k) && matchesSearch(k));
-  if(leftovers.length > 0){
-    const catLi = document.createElement('li');
-    catLi.className = 'law-cat';
-    const header = document.createElement('button');
-    header.className = 'law-cat-header';
-    const collapsed = searching ? false : !!categoryCollapsed['其他'];
-    header.innerHTML = `<span class="law-cat-arrow">${collapsed ? '▸' : '▾'}</span><span>其他</span><span class="law-cat-count">${leftovers.length}</span>`;
-    header.addEventListener('click', ()=>{
-      categoryCollapsed['其他'] = !categoryCollapsed['其他'];
-      buildLawNav();
-    });
-    catLi.appendChild(header);
-    if(!collapsed){
-      const inner = document.createElement('ul');
-      inner.className = 'law-cat-body';
-      leftovers.forEach(key => inner.appendChild(makeLawItem(key)));
       catLi.appendChild(inner);
     }
     lawNav.appendChild(catLi);
@@ -3416,9 +3461,10 @@ function showImportScreen(errorMsg){
   });
 }
 
-function startApp(){
+async function startApp(){
   lawKeys = Object.keys(DATA);
   currentLaw = lawKeys[0];
+  await ensureCategoryOverridesLoaded();
   buildAppShell();
   render();
 }

@@ -1656,6 +1656,46 @@ function refreshThumbs(lawKey, no){
 // ---------- Tab key indents/outdents list items, for multi-level 分點 ----------
 // Manually restructures the <li>/<ul> DOM instead of relying on execCommand
 // 'indent'/'outdent', since browser support for those on list items is inconsistent.
+// ---------- Clean up leaked formatting (large/bold/colored text from paste or drag-drop) ----------
+// Strips font-size / font-weight / font-family / color styling and unwraps <b>/<strong>/<font>
+// tags, while preserving list structure, highlighter spans (background-color) and links.
+function cleanFormatting(root){
+  const walk = (node)=>{
+    // snapshot children first since we may mutate the tree while walking
+    Array.from(node.childNodes).forEach(walk);
+
+    if(node.nodeType !== 1) return; // only elements
+
+    // unwrap bold/font tags entirely, keeping their text/children in place
+    if(['B','STRONG','FONT'].includes(node.nodeName)){
+      const parent = node.parentNode;
+      if(parent){
+        while(node.firstChild) parent.insertBefore(node.firstChild, node);
+        parent.removeChild(node);
+      }
+      return;
+    }
+
+    if(node.hasAttribute('style')){
+      const isHighlight = node.classList && node.classList.contains('user-highlight');
+      if(isHighlight){
+        // keep only background-color for our own highlighter spans
+        const bg = node.style.backgroundColor;
+        node.removeAttribute('style');
+        if(bg) node.style.backgroundColor = bg;
+      } else {
+        node.removeAttribute('style');
+      }
+    }
+    // strip presentational attributes some paste sources leave behind
+    node.removeAttribute('face');
+    node.removeAttribute('size');
+    node.removeAttribute('color');
+  };
+  Array.from(root.childNodes).forEach(walk);
+  root.dispatchEvent(new Event('input', {bubbles:true}));
+}
+
 function findEnclosingLi(node, boundary){
   while(node && node !== boundary){
     if(node.nodeName === 'LI') return node;
@@ -1745,6 +1785,27 @@ document.addEventListener('paste', (e)=>{
     sel.collapseToEnd();
   }
   target.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+// Dragging text/HTML into a note area is a separate browser event from paste, and was
+// bypassing the plain-text guard above. Force it through the same plain-text path.
+document.addEventListener('drop', (e)=>{
+  const target = e.target && e.target.closest ? e.target.closest('.note-area') : null;
+  if(!target) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  const text = dt ? (dt.getData('text/plain') || dt.getData('text/uri-list') || '') : '';
+  if(!text) return;
+  target.focus();
+  try{
+    document.execCommand('insertText', false, text);
+  }catch(err){}
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+});
+document.addEventListener('dragover', (e)=>{
+  const target = e.target && e.target.closest ? e.target.closest('.note-area') : null;
+  if(target && target.getAttribute('contenteditable') === 'true') e.preventDefault();
 });
 
 const MORANDI_COLORS = [
@@ -1895,6 +1956,11 @@ function wireFmtButtons(root){
       if(btn.classList.contains('highlighter-btn')){
         target.focus();
         openHighlighterPopover(btn, target);
+        return;
+      }
+      if(btn.classList.contains('clean-fmt-btn')){
+        if(!confirm('確定要清除這個欄位裡跑掉的格式嗎？文字內容不會被刪除，但字體大小/粗體/顏色等格式會被去除（分點清單跟螢光筆標記會保留）。')) return;
+        cleanFormatting(target);
         return;
       }
       target.focus();
@@ -2079,6 +2145,7 @@ function buildAppShell(){
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="unclassified_ta" title="清除這個欄位裡跑掉的格式（粗體、字級、顏色），保留分點與螢光筆">🧹 清除格式</button>
         </div>
         <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
         <div class="exam-images-row" id="imgs_unclassified"></div>
@@ -3031,6 +3098,7 @@ function renderCards(){
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${origId}" title="清除這個欄位裡跑掉的格式（粗體、字級、顏色），保留分點與螢光筆">🧹 清除格式</button>
           <button type="button" class="pdf-upload-btn" data-pdf-upload="1" data-law="${currentLaw}" data-no="${a.no}">📄 上傳 PDF</button>
         </div>
         <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${origId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上解釋文、理由書、意見書全文…">${toEditableHtml(origVal)}</div>
@@ -3082,6 +3150,7 @@ function renderCards(){
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${noteId}" title="清除這個欄位裡跑掉的格式（粗體、字級、顏色），保留分點與螢光筆">🧹 清除格式</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="note" id="${noteId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡可以寫下你自己的筆記…">${toEditableHtml(noteVal)}</div>
       </div>
@@ -3098,6 +3167,7 @@ function renderCards(){
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${answerId}" title="清除這個欄位裡跑掉的格式（粗體、字級、顏色），保留分點與螢光筆">🧹 清除格式</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="answerCopy" id="${answerId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡放申論題的模範作答／可直接抄的答案內容…">${toEditableHtml(answerVal)}</div>
       </div>
@@ -3114,6 +3184,7 @@ function renderCards(){
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${examId}" title="清除這個欄位裡跑掉的格式（粗體、字級、顏色），保留分點與螢光筆">🧹 清除格式</button>
         </div>
         <div class="note-area" contenteditable="true" data-field="exam" id="${examId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上考古題、實務案例、爭點討論…（部分內容已從你的講義自動帶入）">${toEditableHtml(examVal)}</div>
         <div class="exam-images-row" id="imgs_${cssSafe(currentLaw)}_${cssSafe(a.no)}">${thumbsHtml(currentLaw, a.no)}</div>

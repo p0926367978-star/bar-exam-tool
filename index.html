@@ -1,0 +1,3563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>六法工具箱｜法條分類查詢</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f3b2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="六法工具箱">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Sans+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cover-green:#1f3b2c;
+    --cover-green-dark:#152a1f;
+    --page-cream:#f6f1e4;
+    --page-cream-2:#efe8d6;
+    --ink:#241f16;
+    --ink-soft:#5a5142;
+    --gold:#b08d57;
+    --gold-bright:#d4af6a;
+    --seal-red:#9e2a2b;
+    --seal-red-soft:#c65b4f;
+    --rule:#d8cdb0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Noto Sans TC',sans-serif;
+    background:var(--page-cream);
+    color:var(--ink);
+    display:flex;
+    min-height:100vh;
+  }
+  ::selection{background:var(--gold-bright);color:var(--cover-green-dark);}
+
+  .cover{
+    width:280px;
+    min-width:280px;
+    background:linear-gradient(160deg,var(--cover-green) 0%, var(--cover-green-dark) 100%);
+    color:var(--page-cream);
+    padding:28px 20px 20px;
+    display:flex;
+    flex-direction:column;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .cover::-webkit-scrollbar{width:6px;}
+  .cover::-webkit-scrollbar-thumb{background:rgba(212,175,106,0.4);border-radius:4px;}
+
+  .brand{
+    font-family:'Noto Serif TC',serif;
+    font-weight:900;
+    font-size:22px;
+    letter-spacing:2px;
+    border-bottom:1px solid rgba(212,175,106,0.35);
+    padding-bottom:16px;
+    margin-bottom:6px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  .brand .gold-dot{color:var(--gold-bright);font-size:14px;}
+  .brand-sub{
+    font-size:11px;
+    letter-spacing:3px;
+    color:var(--gold-bright);
+    margin-bottom:16px;
+    text-transform:uppercase;
+  }
+  .account-badge{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--page-cream);
+    background:rgba(212,175,106,0.12);
+    border:1px solid rgba(212,175,106,0.35);
+    border-radius:8px;
+    padding:8px 10px;
+    margin-bottom:14px;
+    word-break:break-all;
+  }
+  .account-badge .acc-icon{flex-shrink:0; color:var(--gold-bright);}
+  .cover-search{
+    margin-bottom:14px;
+  }
+  .cover-search input{
+    width:100%;
+    padding:8px 10px;
+    border-radius:6px;
+    border:1px solid rgba(212,175,106,0.35);
+    background:rgba(255,255,255,0.06);
+    color:var(--page-cream);
+    font-size:12.5px;
+    outline:none;
+  }
+  .cover-search input::placeholder{color:rgba(246,241,228,0.5);}
+
+  .global-search-box{margin-bottom:14px;}
+  .global-search-box input{
+    width:100%;
+    padding:9px 10px;
+    border-radius:6px;
+    border:1.5px solid var(--gold-bright);
+    background:rgba(212,175,106,0.1);
+    color:var(--page-cream);
+    font-size:12.5px;
+    outline:none;
+  }
+  .global-search-box input::placeholder{color:rgba(246,241,228,0.55);}
+  .global-search-hint{font-size:10.5px; color:rgba(246,241,228,0.5); margin-top:5px; line-height:1.5;}
+
+  .global-search-overlay{
+    position:fixed; inset:0; background:rgba(20,15,8,0.55);
+    z-index:900; display:flex; align-items:flex-start; justify-content:center;
+    padding:40px 20px; overflow-y:auto;
+  }
+  .global-search-panel{
+    background:var(--page-cream); border-radius:12px; max-width:820px; width:100%;
+    padding:24px 26px; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .global-search-panel-head{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'Noto Serif TC',serif; font-weight:800; font-size:18px;
+    margin-bottom:16px; color:var(--ink);
+  }
+  .global-search-results{max-height:70vh; overflow-y:auto;}
+  .gsr-item{
+    background:#fff; border:1px solid var(--rule); border-left:4px solid var(--gold);
+    border-radius:8px; padding:14px 16px; margin-bottom:12px; cursor:pointer;
+  }
+  .gsr-item:hover{border-left-color:var(--seal-red);}
+  .gsr-law{font-size:11px; font-weight:700; color:var(--seal-red); letter-spacing:1px;}
+  .gsr-no{font-family:'Noto Sans Mono',monospace; font-weight:700; font-size:12.5px; color:var(--cover-green); margin-left:8px;}
+  .gsr-snippet{font-size:13px; color:var(--ink-soft); margin-top:6px; line-height:1.7;}
+  .gsr-snippet mark{background:var(--gold-bright); color:var(--ink); padding:0 2px; border-radius:2px;}
+  .gsr-field-tag{
+    display:inline-block; font-size:10px; font-weight:700; color:var(--gold);
+    border:1px solid var(--gold); border-radius:4px; padding:1px 6px; margin-right:6px;
+  }
+
+  .log-date-group{margin-bottom:20px;}
+  .log-date-head{
+    font-family:'Noto Serif TC',serif; font-weight:800; font-size:14.5px;
+    color:var(--seal-red); margin-bottom:8px; padding-bottom:4px;
+    border-bottom:1.5px dashed var(--gold);
+  }
+  .log-date-count{font-family:'Noto Sans Mono',monospace; font-size:11px; color:var(--ink-soft); font-weight:400;}
+  .log-item{
+    background:#fff; border:1px solid var(--rule); border-left:4px solid var(--gold);
+    border-radius:8px; padding:10px 14px; margin-bottom:8px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .log-item:hover{border-left-color:var(--seal-red);}
+  .log-law{font-size:11px; font-weight:700; color:var(--seal-red); letter-spacing:1px;}
+  .log-no{font-family:'Noto Sans Mono',monospace; font-weight:700; font-size:12.5px; color:var(--cover-green);}
+  .log-field-tag{
+    margin-left:auto; font-size:10px; font-weight:700; color:var(--gold);
+    border:1px solid var(--gold); border-radius:4px; padding:2px 7px; white-space:nowrap;
+  }
+
+  .law-nav{list-style:none;margin:0;padding:0;flex:1;}
+  .law-item{margin-bottom:4px; display:flex; align-items:stretch; gap:4px;}
+  .law-cat{list-style:none; margin-bottom:6px;}
+  .law-cat-header{
+    width:100%;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(212,175,106,0.10);
+    border:1px solid rgba(212,175,106,0.30);
+    border-radius:7px;
+    color:var(--gold-bright);
+    font-family:'Noto Serif TC',serif;
+    font-weight:800;
+    font-size:13.5px;
+    letter-spacing:2px;
+    padding:8px 10px;
+    cursor:pointer;
+    margin-bottom:4px;
+  }
+  .law-cat-header:hover{background:rgba(212,175,106,0.18);}
+  .law-cat-arrow{font-size:11px; width:12px;}
+  .law-cat-count{
+    margin-left:auto;
+    font-family:'Noto Sans Mono',monospace;
+    font-size:11px;
+    font-weight:400;
+    color:rgba(246,241,228,0.55);
+  }
+  .law-cat-body{list-style:none; margin:0 0 2px 0; padding-left:10px;}
+  .law-delete-btn{
+    flex-shrink:0;
+    width:32px;
+    background:transparent;
+    border:1px solid transparent;
+    border-radius:6px;
+    color:rgba(246,241,228,0.35);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .law-delete-btn:hover{background:rgba(196,74,58,0.15); border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .law-btn{
+    flex:1;
+    min-width:0;
+    text-align:left;
+    background:transparent;
+    border:none;
+    color:var(--page-cream);
+    font-family:'Noto Sans TC',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    transition:background .15s ease;
+  }
+  .law-btn:hover{background:rgba(212,175,106,0.12);}
+  .law-btn.active{background:rgba(212,175,106,0.22); color:var(--gold-bright); font-weight:700;}
+  .law-count{
+    font-family:'Noto Sans Mono',monospace;
+    font-size:10.5px;
+    color:rgba(246,241,228,0.55);
+  }
+  .law-btn.active .law-count{color:var(--gold-bright);}
+
+  .export-data-btn{
+    width:100%;
+    background:rgba(212,175,106,0.15);
+    border:1.5px solid var(--gold-bright);
+    color:var(--gold-bright);
+    font-size:12.5px;
+    font-weight:700;
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:6px;
+  }
+  .export-data-btn:hover{background:rgba(212,175,106,0.28);}
+  .export-data-btn:disabled{opacity:0.5; cursor:default;}
+  .export-progress-label{
+    font-size:10.5px;
+    color:rgba(246,241,228,0.6);
+    text-align:center;
+    margin-bottom:10px;
+    min-height:14px;
+  }
+  .cover-footer{
+    font-size:10.5px;
+    color:rgba(246,241,228,0.45);
+    border-top:1px solid rgba(212,175,106,0.25);
+    padding-top:14px;
+    line-height:1.7;
+  }
+
+  .page{
+    flex:1;
+    padding:36px 44px 60px;
+    max-width:1000px;
+  }
+  .page-head{margin-bottom:26px;}
+  .kicker{
+    font-family:'Noto Sans Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:2px;
+    color:var(--seal-red);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Noto Serif TC',serif;
+    font-weight:900;
+    font-size:32px;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .law-desc{color:var(--ink-soft);font-size:14px;margin:0;}
+  .source-link{
+    display:inline-block;
+    margin-top:10px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--seal-red);
+    text-decoration:none;
+    border-bottom:1px dashed var(--seal-red-soft);
+  }
+  .source-link:hover{color:var(--seal-red-soft);}
+  .add-entry-btn{
+    display:inline-block;
+    margin-top:12px;
+    margin-left:14px;
+    background:var(--cover-green);
+    color:var(--page-cream);
+    font-weight:700;
+    font-size:12.5px;
+    padding:8px 16px;
+    border:none;
+    border-radius:20px;
+    cursor:pointer;
+  }
+  .add-entry-btn:hover{background:var(--cover-green-dark);}
+  .print-btn{background:var(--seal-red); margin-left:0;}
+  .print-btn:hover{background:var(--seal-red-soft);}
+
+  @media print{
+    .cover, .global-search-overlay, .add-entry-overlay, .lightbox-overlay,
+    #backToTopBtn, .outline-block, .note-banner-block,
+    .toolbar, .tested-filter-row, .range-indicator,
+    .note-toolbar, .reset-btn, .save-indicator, .tested-toggle,
+    .exam-add-image-btn, .exam-thumb-delete, .pdf-upload-btn,
+    .pdf-open-newtab, .attach-pdf-head button, .has-note-badge,
+    .print-btn, .add-entry-btn, .source-link, .kicker
+    { display:none !important; }
+    body{ display:block !important; background:#fff; }
+    .page{ padding:0; max-width:100%; }
+    .card{ break-inside:avoid; border:1px solid #999; box-shadow:none; }
+    .note-area{ border:1px solid #ccc; background:#fff; }
+    .law-article-block, .law-article-block.single{ background:#f5f5f0; }
+    .pdf-preview-box{ height:auto; min-height:200px; background:#fff; }
+  }
+  .add-entry-overlay{
+    position:fixed; inset:0; background:rgba(20,15,8,0.55);
+    z-index:950; display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .add-entry-panel{
+    background:var(--page-cream); border-radius:12px; max-width:440px; width:100%;
+    padding:24px 26px; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .add-entry-head{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'Noto Serif TC',serif; font-weight:800; font-size:18px;
+    margin-bottom:14px; color:var(--ink);
+  }
+  .add-entry-label{
+    display:block; font-size:12px; font-weight:700; color:var(--ink-soft);
+    margin:12px 0 4px;
+  }
+  .add-entry-error{color:var(--seal-red); font-size:12.5px; min-height:18px; margin-top:6px;}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin:22px 0 12px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .search-wrap{position:relative; flex:1; min-width:220px;}
+  .search-wrap input{
+    width:100%;
+    padding:11px 14px 11px 38px;
+    border:1.5px solid var(--rule);
+    border-radius:8px;
+    background:#fff;
+    font-size:14.5px;
+    font-family:'Noto Sans TC',sans-serif;
+    color:var(--ink);
+    outline:none;
+    transition:border-color .15s;
+  }
+  .search-wrap input:focus{border-color:var(--gold);}
+  .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-soft);pointer-events:none;}
+
+  .chip-filter{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    border:1.5px solid var(--rule);
+    background:#fff;
+    color:var(--ink-soft);
+    padding:7px 12px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:500;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .15s;
+  }
+  .chip:hover{border-color:var(--gold);}
+  .chip.active{background:var(--cover-green);border-color:var(--cover-green);color:var(--page-cream);}
+
+  .chapter-scroll{
+    max-height:64px;
+    overflow-y:auto;
+    padding-bottom:4px;
+    margin-bottom:14px;
+  }
+
+  .tested-filter-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .tf-label{font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;}
+  .tf-chip.active[data-tf="yes"]{background:#3d7a4f;border-color:#3d7a4f;color:#fff;}
+  .tf-chip.active[data-tf="no"]{background:var(--seal-red-soft);border-color:var(--seal-red-soft);color:#fff;}
+  .tf-chip.active[data-tf="unset"]{background:var(--ink-soft);border-color:var(--ink-soft);color:#fff;}
+
+  .result-count{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;}
+
+  .card{
+    background:#fff;
+    border:1px solid var(--rule);
+    border-left:4px solid var(--gold);
+    border-radius:10px;
+    padding:20px 22px;
+    margin-bottom:16px;
+    position:relative;
+  }
+  .card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .article-no{
+    font-family:'Noto Sans Mono',monospace;
+    font-weight:700;
+    font-size:13px;
+    color:#fff;
+    background:var(--cover-green);
+    padding:4px 10px;
+    border-radius:5px;
+    white-space:nowrap;
+  }
+  .chapter-tag{font-size:11.5px;color:var(--ink-soft); margin-top:6px;}
+  .article-title-mini{
+    font-family:'Noto Serif TC',serif;
+    font-weight:700;
+    font-size:14px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+  .english-block{
+    font-family:'Noto Sans TC',sans-serif;
+    font-style:normal;
+    font-size:13.5px;
+    line-height:1.85;
+    color:var(--ink-soft);
+    padding:10px 14px;
+    background:#fff;
+    border:1px dashed var(--rule);
+    border-radius:4px;
+  }
+  .english-block .eng-para + .eng-para{margin-top:10px;}
+  .english-block .eng-num{
+    font-family:'Noto Sans Mono',monospace;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-right:6px;
+  }
+  .english-block.empty{
+    color:#a89f8c;
+    font-style:italic;
+  }
+  .block{margin-top:12px;}
+  .block-label{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:1.5px;
+    color:var(--gold);
+    text-transform:uppercase;
+    margin-bottom:5px;
+  }
+  .divider{height:1px;background:var(--rule);margin:14px 0;}
+
+  .law-article-block{
+    background:var(--page-cream-2);
+    border-left:3px solid var(--gold);
+    border-radius:4px;
+    padding:14px 16px;
+  }
+  .law-para-row{display:flex;gap:14px;align-items:flex-start;}
+  .law-para-row + .law-para-row{margin-top:12px;}
+  .law-para-num{
+    font-family:'Noto Serif TC',serif;
+    font-style:italic;
+    font-weight:700;
+    color:var(--ink-soft);
+    font-size:14px;
+    min-width:16px;
+    padding-top:1px;
+  }
+  .law-para-text{
+    font-family:'Noto Serif TC',serif;
+    font-size:15.5px;
+    line-height:2;
+    color:var(--ink);
+    white-space:pre-line;
+  }
+  .law-article-block.single .law-para-text{
+    font-family:'Noto Serif TC',serif;
+    font-size:15.5px;
+    line-height:2;
+    color:var(--ink);
+    white-space:pre-line;
+  }
+
+  .note-block{margin-top:14px;}
+  .note-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;}
+  .note-label{color:var(--seal-red);margin-bottom:0;}
+  .note-actions{display:flex;align-items:center;gap:10px;}
+  .save-indicator{font-size:11px;font-family:'Noto Sans Mono',monospace;color:var(--ink-soft);min-width:60px;text-align:right;white-space:nowrap;}
+  .save-indicator.saved{color:#3d7a4f;}
+  .save-indicator.error{color:var(--seal-red);}
+  .save-indicator.offline{color:var(--seal-red); font-weight:700; animation:offline-pulse 1.4s ease-in-out infinite;}
+  @keyframes offline-pulse{ 0%,100%{opacity:1;} 50%{opacity:0.45;} }
+  .reset-btn{
+    font-size:11px;color:var(--ink-soft);background:transparent;
+    border:1px solid var(--rule);border-radius:14px;padding:4px 10px;cursor:pointer;white-space:nowrap;
+  }
+  .reset-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .note-area.scrollable-original{
+    max-height:420px;
+    overflow-y:auto;
+    font-family:'Noto Serif TC',serif;
+    font-size:15px;
+    line-height:1.9;
+    background:var(--page-cream-2);
+    border-left:3px solid var(--gold);
+  }
+  .pdf-preview-box{
+    height:420px;
+    border:1.5px solid var(--rule);
+    border-left:3px solid var(--gold);
+    border-radius:6px;
+    overflow:hidden;
+    background:#525659;
+    position:relative;
+  }
+  .pdf-preview-box iframe{
+    width:100%;
+    height:100%;
+    border:none;
+    display:block;
+  }
+  .pdf-open-newtab{
+    position:absolute;
+    bottom:8px;
+    right:8px;
+    background:rgba(0,0,0,0.65);
+    color:#fff;
+    font-size:11px;
+    font-family:'Noto Sans TC',sans-serif;
+    padding:5px 10px;
+    border-radius:14px;
+    text-decoration:none;
+  }
+  .pdf-open-newtab:hover{background:rgba(0,0,0,0.85);}
+  .pdf-loading-msg{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:13px; font-family:'Noto Sans TC',sans-serif;
+  }
+  .pdf-upload-row{display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;}
+  .pdf-upload-btn{
+    font-size:12px; font-weight:700; color:var(--ink-soft);
+    background:#fff; border:1px solid var(--rule); border-radius:5px;
+    padding:4px 9px; cursor:pointer; line-height:1;
+  }
+  .pdf-upload-btn:hover{border-color:var(--gold); color:var(--ink);}
+  .pdf-upload-btn.remove-pdf{color:var(--seal-red); border-color:var(--seal-red-soft);}
+  .note-area{
+    width:100%;
+    min-height:90px;
+    border:1.5px solid var(--rule);
+    border-radius:6px;
+    padding:12px 14px;
+    font-family:'Noto Sans TC',sans-serif;
+    font-size:14px;
+    line-height:1.85;
+    color:var(--ink);
+    background:#fffdf8;
+    outline:none;
+    overflow-wrap:break-word;
+  }
+  .note-area:focus{border-color:var(--seal-red-soft);}
+  .note-area:empty:before{
+    content:attr(data-placeholder);
+    color:#a89f8c;
+  }
+  .note-area ul{margin:0; padding-left:22px;}
+  .note-area ul ul{padding-left:20px; margin-top:2px;}
+  .note-area ul ul{list-style-type:circle;}
+  .note-area ul ul ul{list-style-type:square;}
+  .note-area li{margin:2px 0;}
+  .note-area s, .note-area strike{color:#a89f8c;}
+
+  .note-toolbar{
+    display:flex;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .fmt-btn{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:5px;
+    padding:4px 9px;
+    cursor:pointer;
+    line-height:1;
+  }
+  .fmt-btn:hover{border-color:var(--gold); color:var(--ink);}
+  .fmt-btn.strike-btn{text-decoration:line-through;}
+  .fmt-btn.highlighter-btn{background:linear-gradient(180deg,#fff 40%, #E3D5B8 40%);}
+
+  .highlighter-popover{
+    position:fixed;
+    z-index:1200;
+    background:#fff;
+    border:1.5px solid var(--rule);
+    border-radius:10px;
+    padding:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .highlighter-swatches{display:flex; gap:6px;}
+  .highlighter-swatch{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:2px solid rgba(0,0,0,0.08);
+    cursor:pointer;
+    padding:0;
+  }
+  .highlighter-swatch:hover{border-color:var(--ink-soft); transform:scale(1.1);}
+  .highlighter-clear-btn{
+    font-size:11px; color:var(--ink-soft); background:var(--page-cream-2);
+    border:1px solid var(--rule); border-radius:6px; padding:5px 8px; cursor:pointer;
+  }
+  .highlighter-clear-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .note-area a{color:var(--seal-red); text-decoration:underline;}
+  .note-area a:hover{color:var(--seal-red-soft);}
+
+  .tested-toggle{
+    font-family:'Noto Sans TC',sans-serif;
+    font-size:12px;font-weight:600;padding:5px 12px;border-radius:14px;
+    border:1.5px solid var(--rule);background:#fff;color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:all .15s;
+  }
+  .tested-toggle:hover{border-color:var(--gold);}
+  .tested-toggle.state-yes{background:#e9f4ec;border-color:#3d7a4f;color:#2c5b3a;}
+  .tested-toggle.state-no{background:#fbeceb;border-color:var(--seal-red-soft);color:var(--seal-red);}
+  .tested-toggle.state-unset{background:#fff;border-color:var(--rule);color:var(--ink-soft);}
+
+  .has-note-badge{
+    font-family:'Noto Sans Mono',monospace;
+    font-size:10px;font-weight:700;color:var(--gold);
+    border:1.5px solid var(--gold);border-radius:5px;padding:2px 6px;white-space:nowrap;
+  }
+
+  .exam-images-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+  .exam-thumb-wrap{
+    position:relative;width:56px;height:56px;
+    flex-shrink:0;
+  }
+  .exam-thumb{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block;border-radius:6px;border:1px solid var(--rule);background:#f2ede1;}
+  .exam-thumb-delete{
+    position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;
+    background:var(--seal-red);color:#fff;font-size:11px;line-height:16px;text-align:center;
+    cursor:pointer;border:1.5px solid #fff;padding:0;
+  }
+  .exam-add-image-btn{
+    width:56px;height:56px;border-radius:6px;border:1.5px dashed var(--rule);background:#fff;
+    color:var(--ink-soft);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .exam-add-image-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .exam-image-hint{font-size:11px;color:var(--ink-soft);}
+  .attach-pdf-wrap{margin-top:10px;}
+  .attach-pdf-head{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .pdf-preview-box.attach-pdf-box{height:340px;}
+
+  .lightbox-overlay{
+    position:fixed;inset:0;background:rgba(20,15,8,0.85);display:none;
+    align-items:center;justify-content:center;z-index:1000;cursor:zoom-out;padding:40px;
+  }
+  .lightbox-overlay.show{display:flex;}
+  .lightbox-overlay img{max-width:100%;max-height:100%;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
+  .lightbox-close{position:absolute;top:18px;right:22px;color:#fff;font-size:30px;cursor:pointer;background:none;border:none;line-height:1;}
+
+  .unclassified-block{margin-bottom:22px;}
+  .unclassified-block summary{
+    cursor:pointer;
+    font-size:13px;
+    font-weight:700;
+    color:var(--seal-red);
+    padding:10px 14px;
+    background:var(--page-cream-2);
+    border:1px dashed var(--gold);
+    border-radius:8px;
+    list-style:none;
+  }
+  .unclassified-block summary::-webkit-details-marker{display:none;}
+  .unclassified-block[open] summary{border-radius:8px 8px 0 0;}
+  .unclassified-body{
+    border:1px dashed var(--gold);
+    border-top:none;
+    border-radius:0 0 8px 8px;
+    padding:14px;
+    background:#fffdf8;
+  }
+  .unclassified-body .note-head{margin-bottom:8px;}
+
+  .outline-block{margin-bottom:18px;}
+  .outline-block summary{
+    cursor:pointer;
+    font-size:13px;
+    font-weight:700;
+    color:var(--cover-green);
+    padding:10px 14px;
+    background:#fff;
+    border:1.5px solid var(--rule);
+    border-radius:8px;
+    list-style:none;
+  }
+  .outline-block summary::-webkit-details-marker{display:none;}
+  .outline-block[open] summary{border-radius:8px 8px 0 0; border-bottom:none;}
+  .outline-body{
+    border:1.5px solid var(--rule);
+    border-top:none;
+    border-radius:0 0 8px 8px;
+    padding:12px 16px;
+    background:#fff;
+    max-height:340px;
+    overflow-y:auto;
+  }
+  .outline-row{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    padding:3px 0;
+    font-size:13.5px;
+  }
+  .outline-row.lvl-0{font-family:'Noto Serif TC',serif;font-weight:900;font-size:15px;color:var(--seal-red);margin-top:8px;}
+  .outline-row.lvl-1{font-family:'Noto Serif TC',serif;font-weight:800;font-size:14.5px;color:var(--ink);margin-top:6px;padding-left:4px;}
+  .outline-row.lvl-2{padding-left:22px;color:var(--ink);font-weight:600;}
+  .outline-row.lvl-3{padding-left:44px;color:var(--ink-soft);}
+  .outline-label{flex:1;}
+  .outline-jump{
+    background:transparent;
+    border:none;
+    text-align:left;
+    font-family:inherit;
+    font-size:inherit;
+    font-weight:inherit;
+    color:inherit;
+    cursor:pointer;
+    padding:0;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    width:100%;
+  }
+  .outline-jump:hover .outline-label{color:var(--seal-red); text-decoration:underline;}
+  .outline-range{
+    font-family:'Noto Sans Mono',monospace;
+    font-size:11.5px;
+    color:var(--gold);
+    white-space:nowrap;
+  }
+  .range-indicator{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--page-cream-2);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    padding:8px 14px;
+    margin-bottom:14px;
+    font-size:13px;
+  }
+  .range-indicator .clear-range{
+    margin-left:auto;
+    background:transparent;
+    border:1px solid var(--seal-red-soft);
+    color:var(--seal-red-soft);
+    border-radius:14px;
+    padding:3px 10px;
+    font-size:11.5px;
+    cursor:pointer;
+  }
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+  .empty-state .big{font-family:'Noto Serif TC',serif;font-size:20px;color:var(--ink);margin-bottom:8px;}
+
+  .note-banner-block{margin-bottom:24px;}
+  .note-banner-block summary{
+    cursor:pointer;
+    font-size:13px;
+    font-weight:700;
+    color:var(--seal-red);
+    padding:10px 14px;
+    background:var(--page-cream-2);
+    border:1px dashed var(--gold);
+    border-radius:8px;
+    list-style:none;
+  }
+  .note-banner-block summary::-webkit-details-marker{display:none;}
+  .note-banner-block[open] summary{border-radius:8px 8px 0 0;}
+  .note-banner{
+    background:var(--page-cream-2);
+    border:1px dashed var(--gold);
+    border-top:none;
+    border-radius:0 0 8px 8px;
+    padding:14px 16px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.8;
+  }
+  .note-banner b{color:var(--ink);}
+  .loading-msg{padding:40px;text-align:center;color:var(--ink-soft);font-family:'Noto Serif TC',serif;}
+
+  .import-screen{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:80vh;
+    padding:20px;
+  }
+  .import-card{
+    max-width:440px;
+    text-align:center;
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:14px;
+    padding:40px 34px;
+  }
+  .import-icon{font-size:40px; margin-bottom:6px; color:var(--gold);}
+  .import-card h2{font-family:'Noto Serif TC',serif; font-size:20px; margin:0 0 12px;}
+  .import-card p{font-size:13px; color:var(--ink-soft); line-height:1.8; margin:0 0 22px;}
+  .import-error{color:var(--seal-red) !important;}
+  .import-file-btn{
+    display:inline-block;
+    background:var(--cover-green);
+    color:var(--page-cream);
+    font-weight:700;
+    font-size:14px;
+    padding:12px 24px;
+    border-radius:24px;
+    cursor:pointer;
+  }
+  .import-file-btn:hover{background:var(--cover-green-dark);}
+  .import-progress-wrap{margin-top:22px;}
+  .import-progress-bar-bg{
+    width:100%; height:8px; border-radius:4px; background:var(--page-cream-2); overflow:hidden;
+  }
+  .import-progress-bar{height:100%; width:0%; background:var(--gold); transition:width .2s;}
+  .import-progress-label{font-size:11.5px; color:var(--ink-soft); margin-top:8px;}
+
+  .login-input{
+    width:100%;
+    padding:11px 14px;
+    border:1.5px solid var(--rule);
+    border-radius:8px;
+    font-size:14px;
+    margin-bottom:10px;
+    font-family:'Noto Sans TC',sans-serif;
+    outline:none;
+  }
+  .login-input:focus{border-color:var(--gold);}
+  .login-btn-row{display:flex; gap:10px; margin-top:8px;}
+  .login-btn{flex:1; border:none; text-align:center; font-size:13px; padding:11px 0;}
+  .login-btn-secondary{background:transparent; border:1.5px solid var(--cover-green); color:var(--cover-green);}
+  .login-btn-secondary:hover{background:rgba(31,59,44,0.08);}
+
+  #backToTopBtn{
+    position:fixed;
+    bottom:26px;
+    right:26px;
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    background:var(--cover-green);
+    color:var(--page-cream);
+    border:none;
+    font-size:20px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:900;
+    transition:background .15s, transform .15s;
+  }
+  #backToTopBtn.show{display:flex;}
+  #backToTopBtn:hover{background:var(--seal-red); transform:translateY(-2px);}
+
+  @media (max-width: 760px){
+    body{flex-direction:column;}
+    .cover{width:100%;height:auto;position:relative;min-width:0;max-height:none;}
+    .page{padding:24px 18px 40px;}
+    h1{font-size:26px;}
+
+    .law-nav{
+      flex:0 1 auto;
+      min-height:180px;
+      max-height:56vh;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .law-btn{
+      font-size:17px;
+      font-weight:600;
+      padding:16px 14px;
+      border-bottom:1px solid rgba(212,175,106,0.15);
+      border-radius:8px;
+    }
+    .law-count{font-size:13px;}
+    .cover-search input, .global-search-box input{
+      font-size:16px;
+      padding:13px 12px;
+    }
+    .export-data-btn{font-size:14px; padding:13px;}
+  }
+</style>
+</head>
+<body>
+
+<nav class="cover">
+  <div class="brand"><span class="gold-dot">⚖</span>六法工具箱</div>
+  <div class="brand-sub">My Bar Exam Codex</div>
+  <div class="account-badge" id="accountBadge" style="display:none;"></div>
+  <div class="cover-search">
+    <input id="lawSearch" type="text" placeholder="搜尋科目…">
+  </div>
+  <div class="global-search-box">
+    <input id="globalSearchInput" type="text" placeholder="🔍 跨科目搜尋條文／筆記…">
+    <div class="global-search-hint" id="globalSearchHint"></div>
+  </div>
+  <ul class="law-nav" id="lawNav"></ul>
+  <button id="activityLogBtn" class="export-data-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">📅 學習紀錄</button>
+  <button id="exportDataBtn" class="export-data-btn">⬇ 匯出目前資料（含筆記）</button>
+  <button id="addMoreLawsBtn" class="export-data-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">➕ 新增科目 / 匯入新資料</button>
+  <input type="file" id="addMoreLawsInput" accept="application/json" multiple style="display:none;">
+  <div class="export-progress-label" id="exportProgressLabel"></div>
+  <button id="logoutBtn" class="export-data-btn" style="display:none;border-color:var(--seal-red-soft);color:var(--seal-red-soft);">登出帳號</button>
+  <div class="cover-footer">
+    內容整理自你上傳的講義文件（法條原文＋個人筆記）。條文如需正式引用，請以全國法規資料庫最新公告文字為準。
+  </div>
+</nav>
+
+<main class="page">
+  <div id="appRoot" class="loading-msg">載入資料中…</div>
+</main>
+
+<div class="global-search-overlay" id="globalSearchOverlay" style="display:none;">
+  <div class="global-search-panel">
+    <div class="global-search-panel-head">
+      <div id="globalSearchTitle">跨科目搜尋結果</div>
+      <button id="globalSearchClose" class="clear-range">✕ 關閉</button>
+    </div>
+    <div id="globalSearchResults" class="global-search-results"></div>
+  </div>
+</div>
+
+<div class="global-search-overlay" id="activityLogOverlay" style="display:none;">
+  <div class="global-search-panel">
+    <div class="global-search-panel-head">
+      <div>📅 學習紀錄（依日期顯示你動過筆記的條文）</div>
+      <button id="activityLogClose" class="clear-range">✕ 關閉</button>
+    </div>
+    <div id="activityLogResults" class="global-search-results"></div>
+  </div>
+</div>
+
+<button id="backToTopBtn" title="回到最上方">↑</button>
+
+<div class="highlighter-popover" id="highlighterPopover" style="display:none;">
+  <div class="highlighter-swatches" id="highlighterSwatches"></div>
+  <button id="highlighterClearBtn" class="highlighter-clear-btn">清除螢光</button>
+</div>
+
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <button class="lightbox-close" id="lightboxClose">×</button>
+  <img id="lightboxImg" src="" alt="放大檢視">
+</div>
+
+<div class="add-entry-overlay" id="addEntryOverlay" style="display:none;">
+  <div class="add-entry-panel">
+    <div class="add-entry-head">
+      <span id="addEntryTitle">新增一則</span>
+      <button id="addEntryClose" class="clear-range">✕ 關閉</button>
+    </div>
+    <label class="add-entry-label">字號／案號（必填，例如：釋字第814號）</label>
+    <input type="text" id="addEntryNo" class="login-input" placeholder="釋字第814號">
+    <label class="add-entry-label">標題（選填）</label>
+    <input type="text" id="addEntryTitleInput" class="login-input" placeholder="例如：○○案">
+    <label class="add-entry-label">章節分類（選填，不填會歸到「未分類」）</label>
+    <input type="text" id="addEntryChapter" class="login-input" placeholder="例如：平等權" list="addEntryChapterList">
+    <datalist id="addEntryChapterList"></datalist>
+    <div class="add-entry-error" id="addEntryError"></div>
+    <button id="addEntrySubmit" class="import-file-btn" style="width:100%;">新增</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, deleteDoc,
+  collection, query, where, getDocs, documentId,
+  orderBy, startAt, endAt
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+  createUserWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCbiJQx2VC3Rem6wJ1ScWGyS0m_aAXvz8w",
+  authDomain: "bar-exam-tool.firebaseapp.com",
+  projectId: "bar-exam-tool",
+  storageBucket: "bar-exam-tool.firebasestorage.app",
+  messagingSenderId: "806100120831",
+  appId: "1:806100120831:web:c98de8cc6c5b36b3c1c8ca"
+};
+
+try{
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+  const auth = getAuth(fbApp);
+  window.__firebase = {
+    db, auth, doc, getDoc, setDoc, deleteDoc,
+    collection, query, where, getDocs, documentId,
+    orderBy, startAt, endAt,
+    onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signOut
+  };
+  window.dispatchEvent(new Event('firebase-ready'));
+}catch(e){
+  // If this fails (e.g. blocked in a sandboxed environment), the classic
+  // script below simply won't find window.__firebase and will fall back
+  // to its other storage backends (Claude's window.storage, or localStorage).
+  console.warn('Firebase init skipped:', e);
+  window.dispatchEvent(new Event('firebase-failed'));
+}
+</script>
+<script>
+// ---------- Storage backends ----------
+// Priority: (1) Claude's native window.storage, if present — used unchanged.
+//           (2) Firebase (Firestore), if this build has Firebase configured — requires login,
+//               and syncs across every device you log into.
+//           (3) Browser localStorage — single-device fallback, no login needed.
+// Everything else in this app just calls window.storage.* and doesn't know or
+// care which backend is actually in use underneath.
+
+const CLAUDE_STORAGE_AVAILABLE = (typeof window.storage !== 'undefined');
+
+function makeLocalStorageBackend(){
+  const LS_PREFIX = 'lawtool::';
+  return {
+    async get(key, shared){
+      const raw = localStorage.getItem(LS_PREFIX + key);
+      if(raw === null) throw new Error('key not found: ' + key);
+      return { key, value: raw, shared: !!shared };
+    },
+    async set(key, value, shared){
+      localStorage.setItem(LS_PREFIX + key, value);
+      return { key, value, shared: !!shared };
+    },
+    async delete(key, shared){
+      localStorage.removeItem(LS_PREFIX + key);
+      return { key, deleted: true, shared: !!shared };
+    },
+    async list(prefix, shared){
+      const fullPrefix = LS_PREFIX + (prefix || '');
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith(fullPrefix)) keys.push(k.slice(LS_PREFIX.length));
+      }
+      return { keys, prefix, shared: !!shared };
+    }
+  };
+}
+
+function makeFirestoreBackend(uid){
+  const fb = window.__firebase;
+  const kvColl = fb.collection(fb.db, `users/${uid}/kv`);
+  return {
+    async get(key, shared){
+      const ref = fb.doc(kvColl, key);
+      const snap = await fb.getDoc(ref);
+      if(!snap.exists()) throw new Error('key not found: ' + key);
+      return { key, value: snap.data().value, shared: !!shared };
+    },
+    async set(key, value, shared){
+      const ref = fb.doc(kvColl, key);
+      await fb.setDoc(ref, { value });
+      return { key, value, shared: !!shared };
+    },
+    async delete(key, shared){
+      const ref = fb.doc(kvColl, key);
+      await fb.deleteDoc(ref);
+      return { key, deleted: true, shared: !!shared };
+    },
+    async list(prefix, shared){
+      const p = prefix || '';
+      const q = fb.query(kvColl, fb.orderBy(fb.documentId()), fb.startAt(p), fb.endAt(p + '\uf8ff'));
+      const snaps = await fb.getDocs(q);
+      const keys = [];
+      snaps.forEach(s => keys.push(s.id));
+      return { keys, prefix, shared: !!shared };
+    }
+  };
+}
+
+const LAW_KEYS_EXPECTED = ["civil","foreign","civpro","securities","company","criminal","crimpro","localgov","admexec","admproc","admpenalty","insurance","family","statecomp","compulsory","negotiable","appeal","constitution","constcourt","justiceinterp","concourtjudg"];
+
+let DATA = {};
+let lawKeys = [];
+let currentLaw = null;
+let currentChapter = "all";
+let currentQuery = "";
+let testedFilter = "all";
+let lawSearchQuery = "";
+let currentRange = null; // { startNo, endNo, label }
+
+const testedCache = {};
+const testedLoaded = {};
+const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, origHighlight: {}, engHighlight: {} };   // field -> lawKey -> { [no]: overriddenValue }
+const EDITABLE_ORIGINAL_LAWS = ["justiceinterp", "concourtjudg"];
+const UNCLASSIFIED_IMG_NO = "（整體筆記）"; // sentinel "no" for unclassified-note images, never collides with a real article no
+const fieldLoaded = { note: {}, exam: {} };
+
+function testedKeyPrefix(lawKey){ return `tested::${lawKey}::`; }
+function fieldKeyPrefix(field, lawKey){ return `${field}::${lawKey}::`; }
+
+function ensureTestedLoaded(lawKey){
+  if(testedLoaded[lawKey]) return testedLoaded[lawKey];
+  testedCache[lawKey] = testedCache[lawKey] || {};
+  testedLoaded[lawKey] = (async ()=>{
+    try{
+      const listRes = await window.storage.list(testedKeyPrefix(lawKey), false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && (res.value === 'yes' || res.value === 'no')){
+            testedCache[lawKey][k.slice(testedKeyPrefix(lawKey).length)] = res.value;
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return testedLoaded[lawKey];
+}
+
+function ensureFieldLoaded(field, lawKey){
+  fieldLoaded[field] = fieldLoaded[field] || {};
+  fieldCache[field] = fieldCache[field] || {};
+  if(fieldLoaded[field][lawKey]) return fieldLoaded[field][lawKey];
+  fieldCache[field][lawKey] = fieldCache[field][lawKey] || {};
+  fieldLoaded[field][lawKey] = (async ()=>{
+    try{
+      const prefix = fieldKeyPrefix(field, lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            fieldCache[field][lawKey][k.slice(prefix.length)] = res.value;
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return fieldLoaded[field][lawKey];
+}
+
+function getTestedState(lawKey, no){
+  return (testedCache[lawKey] && testedCache[lawKey][no]) || 'unset';
+}
+async function setTestedState(lawKey, no, state){
+  testedCache[lawKey] = testedCache[lawKey] || {};
+  const key = testedKeyPrefix(lawKey) + no;
+  if(state === 'unset'){
+    delete testedCache[lawKey][no];
+    try{ await window.storage.delete(key, false); }catch(e){}
+  } else {
+    testedCache[lawKey][no] = state;
+    try{ await window.storage.set(key, state, false); }catch(e){}
+  }
+}
+function nextTestedState(state){
+  if(state === 'unset') return 'yes';
+  if(state === 'yes') return 'no';
+  return 'unset';
+}
+function testedLabel(state){
+  if(state === 'yes') return '✓ 考古題出現過';
+  if(state === 'no') return '✕ 尚未出現考古題';
+  return '尚未標記';
+}
+
+function getFieldValue(field, lawKey, no, fallback){
+  const c = fieldCache[field] && fieldCache[field][lawKey];
+  if(c && Object.prototype.hasOwnProperty.call(c, no)) return c[no];
+  return fallback;
+}
+
+const previousValueCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {} };
+function getUndoValue(field, lawKey, no, fallback){
+  const c = previousValueCache[field] && previousValueCache[field][lawKey];
+  if(c && Object.prototype.hasOwnProperty.call(c, no)) return c[no];
+  return fallback;
+}
+
+async function saveField(field, lawKey, no, value, taId){
+  fieldCache[field][lawKey] = fieldCache[field][lawKey] || {};
+  const prevStore = fieldCache[field][lawKey];
+  if(Object.prototype.hasOwnProperty.call(prevStore, no) && prevStore[no] !== value){
+    previousValueCache[field][lawKey] = previousValueCache[field][lawKey] || {};
+    previousValueCache[field][lawKey][no] = prevStore[no];
+  }
+  prevStore[no] = value;
+  try{
+    if(field === 'unclassified'){
+      await window.storage.set(`unclassified::${lawKey}`, value, false);
+      logActivity(lawKey, '（整體筆記）', field);
+    } else {
+      await window.storage.set(fieldKeyPrefix(field, lawKey) + no, value, false);
+      logActivity(lawKey, no, field); // per-article fields only, fire-and-forget
+    }
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+// ---------- Daily study-activity log ("which articles did I touch today") ----------
+const ACTIVITY_FIELD_LABELS = { note: '我的筆記', exam: '考題研究', answerCopy: '抄答案', originalText: '法條原文' };
+
+async function logActivity(lawKey, no, field){
+  try{
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, local UTC date is fine for a daily log
+    const key = `activitylog::${today}`;
+    let entries = {};
+    try{
+      const res = await window.storage.get(key, false);
+      if(res && res.value) entries = JSON.parse(res.value);
+    }catch(e){ /* no entry yet for today */ }
+    const lawTitle = (DATA[lawKey] && DATA[lawKey].title) || lawKey;
+    entries[`${lawKey}::${no}`] = { lawKey, no, lawTitle, field, time: Date.now() };
+    await window.storage.set(key, JSON.stringify(entries), false);
+  }catch(e){ /* logging is best-effort, never block the real save */ }
+}
+
+async function showActivityLogOverlay(){
+  const overlay = document.getElementById('activityLogOverlay');
+  const resultsEl = document.getElementById('activityLogResults');
+  overlay.style.display = 'flex';
+  resultsEl.innerHTML = `<div class="empty-state">載入中…</div>`;
+  try{
+    const alPrefix = 'activitylog::';
+    const listRes = await window.storage.list(alPrefix, false);
+    const keys = (listRes && listRes.keys) || [];
+    const dates = keys.map(k => k.startsWith(alPrefix) ? k.slice(alPrefix.length) : k).sort().reverse();
+    if(dates.length === 0){
+      resultsEl.innerHTML = `<div class="empty-state"><div class="big">還沒有紀錄</div>開始寫筆記之後，這裡就會依日期顯示你動過的條文</div>`;
+      return;
+    }
+    const blocks = [];
+    for(const date of dates){
+      let entries = {};
+      try{
+        const res = await window.storage.get(`${alPrefix}${date}`, false);
+        if(res && res.value) entries = JSON.parse(res.value);
+      }catch(e){}
+      const items = Object.values(entries).sort((a,b)=>b.time - a.time);
+      if(items.length === 0) continue;
+      blocks.push({ date, items });
+    }
+    resultsEl.innerHTML = blocks.map(b=>`
+      <div class="log-date-group">
+        <div class="log-date-head">${escapeHtml(b.date)}　<span class="log-date-count">共 ${b.items.length} 則</span></div>
+        ${b.items.map(it=>`
+          <div class="log-item" data-law="${escapeHtml(it.lawKey)}" data-no="${escapeHtml(it.no)}">
+            <span class="log-law">${escapeHtml(it.lawTitle)}</span>
+            <span class="log-no">${escapeHtml(it.no)}</span>
+            <span class="log-field-tag">${escapeHtml(ACTIVITY_FIELD_LABELS[it.field] || it.field)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('') || `<div class="empty-state"><div class="big">還沒有紀錄</div>開始寫筆記之後，這裡就會依日期顯示你動過的條文</div>`;
+
+    resultsEl.querySelectorAll('.log-item').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        overlay.style.display = 'none';
+        currentLaw = el.dataset.law;
+        currentChapter = 'all';
+        currentRange = null;
+        const isOverall = el.dataset.no === '（整體筆記）';
+        currentQuery = isOverall ? '' : el.dataset.no;
+        render();
+        setTimeout(()=>{
+          if(isOverall){
+            const block = document.getElementById('unclassifiedBlock');
+            if(block){ block.open = true; block.scrollIntoView({behavior:'smooth', block:'start'}); }
+          } else {
+            const si = document.getElementById('searchInput');
+            if(si) si.value = currentQuery;
+          }
+        }, 80);
+      });
+    });
+  }catch(err){
+    resultsEl.innerHTML = `<div class="empty-state">載入失敗：${escapeHtml(err.message || String(err))}</div>`;
+  }
+}
+
+// ---------- Autosave: flush every second, retrying automatically if offline/failed ----------
+const pendingSaves = {}; // taId -> {field, lawKey, no, value}
+const retryDelays = {};  // taId -> current backoff (ms), for gentle retry backoff
+function queueSave(field, lawKey, no, value, taId){
+  pendingSaves[taId] = { field, lawKey, no, value };
+  delete retryDelays[taId]; // a fresh edit resets any backoff
+  showSaving(taId, 'saving');
+}
+setInterval(async ()=>{
+  const ids = Object.keys(pendingSaves);
+  if(ids.length === 0) return;
+  for(const taId of ids){
+    const p = pendingSaves[taId];
+    // if the user kept typing, a newer value is already queued under the same id;
+    // only proceed with what's currently queued (we re-check after the async save below)
+    const ok = await saveField(p.field, p.lawKey, p.no, p.value, taId);
+    // only clear the queue entry if nothing newer has been queued in the meantime
+    if(pendingSaves[taId] === p){
+      if(ok){
+        delete pendingSaves[taId];
+        delete retryDelays[taId];
+        showSaving(taId, 'saved');
+      } else {
+        // keep it queued so the next tick retries automatically; show a persistent offline notice
+        showSaving(taId, 'offline');
+      }
+    }
+  }
+}, 1000);
+
+window.addEventListener('beforeunload', (e)=>{
+  if(Object.keys(pendingSaves).length > 0){
+    e.preventDefault();
+    e.returnValue = '還有內容尚未儲存，確定要離開嗎？';
+    return e.returnValue;
+  }
+});
+
+function showSaving(taId, state){
+  const ind = document.getElementById(`ind_${taId}`);
+  if(!ind) return;
+  clearTimeout(ind._fadeTimer);
+  if(state === 'saving'){
+    ind.textContent = '儲存中…'; ind.className = 'save-indicator saving';
+  } else if(state === 'saved'){
+    ind.textContent = '已儲存 ✓'; ind.className = 'save-indicator saved';
+    ind._fadeTimer = setTimeout(()=>{ if(ind) ind.textContent=''; }, 1800);
+  } else if(state === 'offline'){
+    ind.textContent = '⚠ 離線中，尚未儲存（會自動重試）'; ind.className = 'save-indicator offline';
+  } else {
+    ind.textContent = '儲存失敗'; ind.className = 'save-indicator error';
+  }
+}
+
+// ---------- Exam-research images (compact thumbnails + lightbox) ----------
+const imageCache = {};   // lawKey -> { no: [dataURL, ...] }
+const imageLoaded = {};  // lawKey -> Promise
+
+function examImgKeyPrefix(lawKey){ return `examimg::${lawKey}::`; }
+
+function ensureImagesLoaded(lawKey){
+  if(imageLoaded[lawKey]) return imageLoaded[lawKey];
+  imageCache[lawKey] = imageCache[lawKey] || {};
+  imageLoaded[lawKey] = (async ()=>{
+    try{
+      const prefix = examImgKeyPrefix(lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            const arr = JSON.parse(res.value);
+            if(Array.isArray(arr)) imageCache[lawKey][k.slice(prefix.length)] = arr;
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return imageLoaded[lawKey];
+}
+
+function getImages(lawKey, no){
+  return (imageCache[lawKey] && imageCache[lawKey][no]) || [];
+}
+
+async function saveImages(lawKey, no, arr){
+  imageCache[lawKey] = imageCache[lawKey] || {};
+  imageCache[lawKey][no] = arr;
+  const key = examImgKeyPrefix(lawKey) + no;
+  try{
+    if(arr.length === 0){
+      await window.storage.delete(key, false);
+    } else {
+      await window.storage.set(key, JSON.stringify(arr), false);
+    }
+  }catch(e){ /* keep local cache even if persistence fails */ }
+}
+
+// ---------- Editable-original PDF preview (chunked storage to stay under 1MB/doc) ----------
+const PDF_CHUNK_SIZE = 700000; // characters per chunk, safely under Firestore's 1MB/doc limit
+const pdfMetaCache = {};   // lawKey -> { no: {filename, chunkCount} }
+const pdfMetaLoaded = {};  // lawKey -> Promise
+const pdfDataCache = {};   // lawKey -> { no: dataURL string }  (reconstructed on demand)
+
+function pdfMetaKeyPrefix(lawKey){ return `pdfmeta::${lawKey}::`; }
+function pdfChunkKeyPrefix(lawKey, no){ return `pdfchunk::${lawKey}::${no}::`; }
+
+function ensurePdfMetaLoaded(lawKey){
+  if(pdfMetaLoaded[lawKey]) return pdfMetaLoaded[lawKey];
+  pdfMetaCache[lawKey] = pdfMetaCache[lawKey] || {};
+  pdfMetaLoaded[lawKey] = (async ()=>{
+    try{
+      const prefix = pdfMetaKeyPrefix(lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            pdfMetaCache[lawKey][k.slice(prefix.length)] = JSON.parse(res.value);
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return pdfMetaLoaded[lawKey];
+}
+
+function getPdfMeta(lawKey, no){
+  return (pdfMetaCache[lawKey] && pdfMetaCache[lawKey][no]) || null;
+}
+
+async function loadPdfData(lawKey, no){
+  pdfDataCache[lawKey] = pdfDataCache[lawKey] || {};
+  if(pdfDataCache[lawKey][no]) return pdfDataCache[lawKey][no];
+  const meta = getPdfMeta(lawKey, no);
+  if(!meta) return null;
+  const prefix = pdfChunkKeyPrefix(lawKey, no);
+  let combined = '';
+  for(let i=0;i<meta.chunkCount;i++){
+    const res = await window.storage.get(prefix + i, false);
+    combined += (res && res.value) || '';
+  }
+  pdfDataCache[lawKey][no] = combined;
+  return combined;
+}
+
+async function savePdfFile(lawKey, no, file, onProgress){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const chunkCount = Math.ceil(dataUrl.length / PDF_CHUNK_SIZE);
+  for(let i=0;i<chunkCount;i++){
+    const chunk = dataUrl.slice(i*PDF_CHUNK_SIZE, (i+1)*PDF_CHUNK_SIZE);
+    await window.storage.set(pdfChunkKeyPrefix(lawKey, no) + i, chunk, false);
+    if(onProgress) onProgress(i+1, chunkCount);
+  }
+  const meta = { filename: file.name, chunkCount };
+  await window.storage.set(pdfMetaKeyPrefix(lawKey) + no, JSON.stringify(meta), false);
+  pdfMetaCache[lawKey] = pdfMetaCache[lawKey] || {};
+  pdfMetaCache[lawKey][no] = meta;
+  pdfDataCache[lawKey] = pdfDataCache[lawKey] || {};
+  pdfDataCache[lawKey][no] = dataUrl;
+  return meta;
+}
+
+async function deletePdf(lawKey, no){
+  const meta = getPdfMeta(lawKey, no);
+  if(meta){
+    for(let i=0;i<meta.chunkCount;i++){
+      try{ await window.storage.delete(pdfChunkKeyPrefix(lawKey, no) + i, false); }catch(e){}
+    }
+  }
+  try{ await window.storage.delete(pdfMetaKeyPrefix(lawKey) + no, false); }catch(e){}
+  if(pdfMetaCache[lawKey]) delete pdfMetaCache[lawKey][no];
+  if(pdfDataCache[lawKey]) delete pdfDataCache[lawKey][no];
+}
+
+// ---------- General-purpose PDF attachment (e.g. scholar articles) — every article, every law ----------
+// Uses a separate key namespace from the editable-original PDF feature above, so the
+// two never collide even on 大法官解釋/憲法法庭判決 where both features are available.
+const attachMetaCache = {};   // lawKey -> { no: {filename, chunkCount} }
+const attachMetaLoaded = {};  // lawKey -> Promise
+const attachDataCache = {};   // lawKey -> { no: dataURL string }
+
+function attachMetaKeyPrefix(lawKey){ return `attachpdfmeta::${lawKey}::`; }
+function attachChunkKeyPrefix(lawKey, no){ return `attachpdfchunk::${lawKey}::${no}::`; }
+
+function ensureAttachMetaLoaded(lawKey){
+  if(attachMetaLoaded[lawKey]) return attachMetaLoaded[lawKey];
+  attachMetaCache[lawKey] = attachMetaCache[lawKey] || {};
+  attachMetaLoaded[lawKey] = (async ()=>{
+    try{
+      const prefix = attachMetaKeyPrefix(lawKey);
+      const listRes = await window.storage.list(prefix, false);
+      const keys = (listRes && listRes.keys) || [];
+      for(const k of keys){
+        try{
+          const res = await window.storage.get(k, false);
+          if(res && typeof res.value === 'string'){
+            attachMetaCache[lawKey][k.slice(prefix.length)] = JSON.parse(res.value);
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  })();
+  return attachMetaLoaded[lawKey];
+}
+
+function getAttachMeta(lawKey, no){
+  return (attachMetaCache[lawKey] && attachMetaCache[lawKey][no]) || null;
+}
+
+async function loadAttachData(lawKey, no){
+  attachDataCache[lawKey] = attachDataCache[lawKey] || {};
+  if(attachDataCache[lawKey][no]) return attachDataCache[lawKey][no];
+  const meta = getAttachMeta(lawKey, no);
+  if(!meta) return null;
+  const prefix = attachChunkKeyPrefix(lawKey, no);
+  let combined = '';
+  for(let i=0;i<meta.chunkCount;i++){
+    const res = await window.storage.get(prefix + i, false);
+    combined += (res && res.value) || '';
+  }
+  attachDataCache[lawKey][no] = combined;
+  return combined;
+}
+
+async function saveAttachFile(lawKey, no, file, onProgress){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const chunkCount = Math.ceil(dataUrl.length / PDF_CHUNK_SIZE);
+  for(let i=0;i<chunkCount;i++){
+    const chunk = dataUrl.slice(i*PDF_CHUNK_SIZE, (i+1)*PDF_CHUNK_SIZE);
+    await window.storage.set(attachChunkKeyPrefix(lawKey, no) + i, chunk, false);
+    if(onProgress) onProgress(i+1, chunkCount);
+  }
+  const meta = { filename: file.name, chunkCount };
+  await window.storage.set(attachMetaKeyPrefix(lawKey) + no, JSON.stringify(meta), false);
+  attachMetaCache[lawKey] = attachMetaCache[lawKey] || {};
+  attachMetaCache[lawKey][no] = meta;
+  attachDataCache[lawKey] = attachDataCache[lawKey] || {};
+  attachDataCache[lawKey][no] = dataUrl;
+  return meta;
+}
+
+async function deleteAttach(lawKey, no){
+  const meta = getAttachMeta(lawKey, no);
+  if(meta){
+    for(let i=0;i<meta.chunkCount;i++){
+      try{ await window.storage.delete(attachChunkKeyPrefix(lawKey, no) + i, false); }catch(e){}
+    }
+  }
+  try{ await window.storage.delete(attachMetaKeyPrefix(lawKey) + no, false); }catch(e){}
+  if(attachMetaCache[lawKey]) delete attachMetaCache[lawKey][no];
+  if(attachDataCache[lawKey]) delete attachDataCache[lawKey][no];
+}
+
+function compressImageFile(file, maxDim=900, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          if(width >= height){ height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function thumbsHtml(lawKey, no){
+  const imgs = getImages(lawKey, no);
+  const thumbs = imgs.map((src, i)=>`
+    <div class="exam-thumb-wrap">
+      <img class="exam-thumb" src="${src}" data-lightbox-src="${src}">
+      <button class="exam-thumb-delete" data-law="${lawKey}" data-no="${no}" data-idx="${i}" title="刪除圖片">×</button>
+    </div>`).join('');
+  return `${thumbs}<button class="exam-add-image-btn" data-law="${lawKey}" data-no="${no}" title="新增圖片">＋</button>`;
+}
+
+function refreshThumbs(lawKey, no){
+  // the unclassified-note image row has a fixed id that doesn't follow the per-article pattern
+  const el = (no === UNCLASSIFIED_IMG_NO)
+    ? document.getElementById('imgs_unclassified')
+    : document.getElementById(`imgs_${cssSafe(lawKey)}_${cssSafe(no)}`);
+  if(!el) return;
+  el.innerHTML = thumbsHtml(lawKey, no);
+  wireThumbRow(el);
+}
+
+// ---------- Force-plain-text paste for every editable note area ----------
+// Uses event delegation on document (always exists), so this is safe to attach
+// at the top level even for note areas that only appear later inside dynamically
+// rendered cards.
+// ---------- Tab key indents/outdents list items, for multi-level 分點 ----------
+// Manually restructures the <li>/<ul> DOM instead of relying on execCommand
+// 'indent'/'outdent', since browser support for those on list items is inconsistent.
+function findEnclosingLi(node, boundary){
+  while(node && node !== boundary){
+    if(node.nodeName === 'LI') return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function indentLi(li){
+  const prevLi = li.previousElementSibling;
+  if(!prevLi || prevLi.nodeName !== 'LI') return false; // first item in its list, nothing to nest under
+  let subUl = null;
+  for(const child of prevLi.children){
+    if(child.nodeName === 'UL' || child.nodeName === 'OL'){ subUl = child; break; }
+  }
+  if(!subUl){
+    subUl = document.createElement('ul');
+    prevLi.appendChild(subUl);
+  }
+  subUl.appendChild(li);
+  return true;
+}
+
+function outdentLi(li){
+  const parentUl = li.parentElement;
+  if(!parentUl || (parentUl.nodeName !== 'UL' && parentUl.nodeName !== 'OL')) return false;
+  const grandLi = parentUl.parentElement;
+  if(!grandLi || grandLi.nodeName !== 'LI') return false; // already top-level
+  const outerList = grandLi.parentElement;
+  outerList.insertBefore(li, grandLi.nextSibling);
+  if(parentUl.children.length === 0) parentUl.remove();
+  return true;
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Tab') return;
+  const target = e.target;
+  if(!target || !target.classList || !target.classList.contains('note-area')) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0) return;
+  const li = findEnclosingLi(sel.getRangeAt(0).startContainer, target);
+  if(!li) return; // cursor isn't inside a list item — let Tab behave normally
+  e.preventDefault();
+
+  // remember where the cursor was within this <li> so we can restore it after moving the node
+  const range = sel.getRangeAt(0);
+  const savedContainer = range.startContainer;
+  const savedOffset = range.startOffset;
+
+  const moved = e.shiftKey ? outdentLi(li) : indentLi(li);
+  if(moved){
+    try{
+      const newRange = document.createRange();
+      newRange.setStart(savedContainer, savedOffset);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }catch(err){}
+    target.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+});
+
+document.addEventListener('paste', (e)=>{
+  const target = e.target;
+  if(!target || !target.classList || !target.classList.contains('note-area')) return;
+  if(target.getAttribute('contenteditable') !== 'true') return;
+  e.preventDefault();
+  const clipboard = e.clipboardData || window.clipboardData;
+  const text = clipboard ? clipboard.getData('text/plain') : '';
+  if(!text) return;
+  try{
+    document.execCommand('insertText', false, text);
+  }catch(err){
+    // fallback for browsers without execCommand support: manual insert at cursor
+    const sel = window.getSelection();
+    if(!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const lines = text.split('\n');
+    const frag = document.createDocumentFragment();
+    lines.forEach((line, i)=>{
+      frag.appendChild(document.createTextNode(line));
+      if(i < lines.length - 1) frag.appendChild(document.createElement('br'));
+    });
+    range.insertNode(frag);
+    sel.collapseToEnd();
+  }
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+const MORANDI_COLORS = [
+  { name: '莫蘭迪綠', hex: '#B5C4B1' },
+  { name: '莫蘭迪粉', hex: '#E0C3BB' },
+  { name: '莫蘭迪藍', hex: '#B0C4CC' },
+  { name: '莫蘭迪黃', hex: '#E3D5B8' },
+  { name: '莫蘭迪紫', hex: '#CBB8CC' },
+  { name: '莫蘭迪灰', hex: '#C9C2BA' },
+];
+
+let highlighterTarget = null;
+let highlighterMode = 'exec'; // 'exec' = contenteditable execCommand path, 'manual' = read-only block wrap path
+let highlighterManualCtx = null; // { blockId, field, lawKey, no }
+let savedManualRange = null; // preserved Range for the manual (non-contenteditable) highlight path
+
+function buildHighlighterSwatches(){
+  const wrap = document.getElementById('highlighterSwatches');
+  if(wrap.childElementCount > 0) return; // already built once
+  MORANDI_COLORS.forEach(c=>{
+    const btn = document.createElement('button');
+    btn.className = 'highlighter-swatch';
+    btn.style.background = c.hex;
+    btn.title = c.name;
+    btn.type = 'button';
+    btn.addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      applyHighlight(c.hex);
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+// Wrap the given Range's contents in a <span style="background:color">, handling
+// ranges that span multiple child nodes (e.g. across a <br> or multiple paragraphs).
+function wrapRangeWithHighlight(range, colorHex){
+  const span = document.createElement('span');
+  span.className = 'user-highlight';
+  span.style.backgroundColor = colorHex;
+  try{
+    range.surroundContents(span);
+  }catch(e){
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+}
+
+function clearHighlightsInRange(root, range){
+  const spans = root.querySelectorAll('span.user-highlight');
+  spans.forEach(span=>{
+    if(range.intersectsNode(span)){
+      const parent = span.parentNode;
+      while(span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+    }
+  });
+}
+
+async function persistManualHighlight(){
+  if(!highlighterManualCtx) return;
+  const { blockId, field, lawKey, no } = highlighterManualCtx;
+  const block = document.getElementById(blockId);
+  if(!block) return;
+  queueSave(field, lawKey, no, block.innerHTML, `ind_manualhl_${cssSafe(lawKey)}_${cssSafe(no)}_${field}`);
+}
+
+function applyHighlight(colorOrNull){
+  if(highlighterMode === 'manual'){
+    if(!highlighterManualCtx || !savedManualRange) return;
+    const block = document.getElementById(highlighterManualCtx.blockId);
+    if(block){
+      if(colorOrNull){
+        wrapRangeWithHighlight(savedManualRange, colorOrNull);
+      } else {
+        clearHighlightsInRange(block, savedManualRange);
+      }
+      persistManualHighlight();
+    }
+    document.getElementById('highlighterPopover').style.display = 'none';
+    return;
+  }
+  if(!highlighterTarget) return;
+  highlighterTarget.focus();
+  try{ document.execCommand('hiliteColor', false, colorOrNull || 'transparent'); }catch(e){}
+  highlighterTarget.dispatchEvent(new Event('input', {bubbles:true}));
+  document.getElementById('highlighterPopover').style.display = 'none';
+}
+
+function openHighlighterPopover(triggerBtn, target){
+  buildHighlighterSwatches();
+  highlighterMode = 'exec';
+  highlighterTarget = target;
+  highlighterManualCtx = null;
+  positionHighlighterPopover(triggerBtn);
+}
+
+function openManualHighlighterPopover(triggerBtn, blockId, field, lawKey, no){
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0 || sel.isCollapsed){
+    alert('請先選取一段文字，再點螢光筆');
+    return;
+  }
+  const range = sel.getRangeAt(0).cloneRange();
+  const block = document.getElementById(blockId);
+  if(!block || !block.contains(range.commonAncestorContainer)){
+    alert('請選取這個區塊裡的文字');
+    return;
+  }
+  buildHighlighterSwatches();
+  highlighterMode = 'manual';
+  highlighterManualCtx = { blockId, field, lawKey, no };
+  savedManualRange = range;
+  positionHighlighterPopover(triggerBtn);
+}
+
+function positionHighlighterPopover(triggerBtn){
+  const pop = document.getElementById('highlighterPopover');
+  const rect = triggerBtn.getBoundingClientRect();
+  pop.style.display = 'flex';
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if(left + popRect.width > window.innerWidth - 10) left = window.innerWidth - popRect.width - 10;
+  if(top + popRect.height > window.innerHeight - 10) top = rect.top - popRect.height - 6;
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+}
+
+document.getElementById('highlighterPopover').addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+document.getElementById('highlighterClearBtn').addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+document.getElementById('highlighterClearBtn').addEventListener('click', ()=>{ applyHighlight(null); });
+document.addEventListener('click', (e)=>{
+  const pop = document.getElementById('highlighterPopover');
+  if(pop.style.display === 'none') return;
+  if(pop.contains(e.target) || e.target.classList.contains('highlighter-btn')) return;
+  pop.style.display = 'none';
+});
+
+function wireFmtButtons(root){
+  root.querySelectorAll('.fmt-btn').forEach(btn=>{
+    if(btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      const target = document.getElementById(btn.dataset.target);
+      if(!target) return;
+      if(btn.classList.contains('highlighter-btn')){
+        target.focus();
+        openHighlighterPopover(btn, target);
+        return;
+      }
+      target.focus();
+      const cmd = btn.dataset.cmd;
+      try{
+        if(cmd === 'createLink'){
+          const sel = window.getSelection();
+          const hasSelection = sel && sel.toString().trim().length > 0;
+          let url = prompt(hasSelection ? '請輸入這段文字要連結的網址：' : '請輸入網址（會直接插入為連結文字）：', 'https://');
+          if(!url) return;
+          if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+          if(hasSelection){
+            document.execCommand('createLink', false, url);
+          } else {
+            document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+          }
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+      }catch(e){}
+      target.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
+}
+
+function wireThumbRow(container){
+  container.querySelectorAll('.exam-thumb').forEach(img=>{
+    img.addEventListener('click', ()=> openLightbox(img.dataset.lightboxSrc));
+  });
+  container.querySelectorAll('.exam-thumb-delete').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const { law, no, idx } = btn.dataset;
+      const arr = getImages(law, no).slice();
+      arr.splice(Number(idx), 1);
+      await saveImages(law, no, arr);
+      refreshThumbs(law, no);
+    });
+  });
+  container.querySelectorAll('.exam-add-image-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const { law, no } = btn.dataset;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const files = Array.from(input.files || []);
+        for(const file of files){
+          try{
+            const dataUrl = await compressImageFile(file);
+            const arr = getImages(law, no).slice();
+            arr.push(dataUrl);
+            await saveImages(law, no, arr);
+            refreshThumbs(law, no);
+          }catch(e){ /* skip failed image */ }
+        }
+        input.remove();
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  });
+}
+
+function openLightbox(src){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxOverlay').classList.add('show');
+}
+function closeLightbox(){
+  document.getElementById('lightboxOverlay').classList.remove('show');
+  document.getElementById('lightboxImg').src = '';
+}
+document.getElementById('lightboxOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'lightboxOverlay') closeLightbox();
+});
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeLightbox(); });
+
+// ---------- Per-law "unclassified notes" field ----------
+async function loadUnclassified(lawKey){
+  let val;
+  try{
+    const res = await window.storage.get(`unclassified::${lawKey}`, false);
+    val = (res && typeof res.value === 'string') ? res.value : (DATA[lawKey].unclassified || '');
+  }catch(e){
+    val = DATA[lawKey].unclassified || '';
+  }
+  fieldCache.unclassified[lawKey] = fieldCache.unclassified[lawKey] || {};
+  fieldCache.unclassified[lawKey][''] = val;
+  return val;
+}
+
+function cssSafe(str){ return str.replace(/[^a-zA-Z0-9]/g, '_'); }
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+// Convert a stored value into safe innerHTML for a contenteditable note area.
+// Legacy/seed values are plain text (no tags) and need escaping + newline->br.
+// Once a note has been edited, the stored value is already real HTML (from
+// contenteditable's own innerHTML), so it's used as-is.
+function toEditableHtml(raw){
+  if(!raw) return '';
+  if(/<[a-z][\s\S]*>/i.test(raw)) return raw;
+  return escapeHtml(raw).replace(/\n/g,'<br>');
+}
+
+// Strip HTML tags down to plain text, for search matching.
+function htmlToText(html){
+  if(!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || '';
+}
+
+function renderOriginalBlock(paragraphs, blockId, overrideHtml){
+  if(overrideHtml){
+    return `<div class="law-article-block" id="${blockId}">${overrideHtml}</div>`;
+  }
+  if(!paragraphs || paragraphs.length === 0) return '';
+  if(paragraphs.length === 1){
+    return `<div class="law-article-block single" id="${blockId}"><div class="law-para-text">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
+  }
+  const rows = paragraphs.map((p, i)=>`
+    <div class="law-para-row">
+      <span class="law-para-num">${i+1}</span>
+      <span class="law-para-text">${escapeHtml(p).replace(/\n/g,'<br>')}</span>
+    </div>`).join('');
+  return `<div class="law-article-block" id="${blockId}">${rows}</div>`;
+}
+
+function renderEnglishBlock(paragraphs, blockId, overrideHtml){
+  if(overrideHtml){
+    return `<div class="english-block" id="${blockId}">${overrideHtml}</div>`;
+  }
+  if(!paragraphs || paragraphs.length === 0){
+    return `<div class="english-block empty" id="${blockId}">尚無英文對照，你可以自行補上，或請我之後協助整理。</div>`;
+  }
+  if(paragraphs.length === 1){
+    return `<div class="english-block" id="${blockId}"><div class="eng-para">${escapeHtml(paragraphs[0]).replace(/\n/g,'<br>')}</div></div>`;
+  }
+  const rows = paragraphs.map((p, i)=>`<div class="eng-para"><span class="eng-num">${i+1}.</span>${escapeHtml(p).replace(/\n/g,'<br>')}</div>`).join('');
+  return `<div class="english-block" id="${blockId}">${rows}</div>`;
+}
+
+// ---------- App shell (built once data + DOM are ready) ----------
+function buildAppShell(){
+  document.getElementById('appRoot').outerHTML = `
+    <div class="page-head">
+      <div class="kicker" id="kicker">科目</div>
+      <h1 id="lawTitle">法規名稱</h1>
+      <p class="law-desc" id="lawDesc">說明</p>
+      <a class="source-link" href="https://law.moj.gov.tw/Index.aspx" target="_blank" rel="noopener">法源查證：全國法規資料庫 law.moj.gov.tw ↗</a>
+      <button id="printBtn" class="add-entry-btn print-btn">🖨 列印／匯出PDF</button>
+      <button id="addEntryBtn" class="add-entry-btn" style="display:none;">➕ 新增一則</button>
+    </div>
+    <details class="outline-block" id="outlineBlock" open>
+      <summary id="outlineSummary">📖 編章節目錄</summary>
+      <div class="outline-body" id="outlineBody"></div>
+    </details>
+    <details class="note-banner-block" id="noteBannerBlock" open>
+      <summary>💡 使用說明（點此收合／展開）</summary>
+      <div class="note-banner">
+        上方「編章節目錄」比照全國法規資料庫的章節架構，點章或節可以直接跳到該範圍的條文。內容整理自你上傳的講義文件——條文逐項完整呈現，框內原本的「・」筆記已放進【我的筆記】欄位；框內標示「抄答案：」的段落，已自動放進獨立的【抄答案】欄位，標示「✍ 已帶入抄答案」的條文就是有這種內容。【考題研究】欄位可以貼考古題、實務案例、爭點討論，也可以直接新增圖片（點縮圖可放大檢視）；標示「📎 已帶入考題筆記」的條文，是我從你講義裡帶圖片的考題解析中，依文字提到的條號自動歸類過來的（純文字部分，圖片本身無法辨識）。找不到明確條號、無法歸類到單一條文的整體重點筆記，放在下方「無法分類的筆記」區塊。所有欄位都可直接編輯，每打字最多一秒內就會自動儲存（僅你自己看得到），並各自有「↩ 回到上一步」可復原到前一次儲存的內容。右上角「考古題」按鈕可標記是否考過，並用下方篩選列查看。搜尋框可比對條號、章節、筆記、抄答案與考題研究內容。
+      </div>
+    </details>
+    <details class="unclassified-block" id="unclassifiedBlock">
+      <summary id="unclassifiedSummary">無法分類的筆記</summary>
+      <div class="unclassified-body">
+        <div class="note-head">
+          <span></span>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_unclassified_ta"></span>
+            <button class="reset-btn" id="unclassifiedReset">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="unclassified_ta" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
+        </div>
+        <div class="note-area" contenteditable="true" id="unclassified_ta" data-placeholder="這裡放無法自動歸類到單一條文的整體重點整理…" style="min-height:140px;"></div>
+        <div class="exam-images-row" id="imgs_unclassified"></div>
+        <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
+        <div id="unclassifiedAttachWrap"></div>
+      </div>
+    </details>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="searchInput" type="text" placeholder="搜尋條號、章節、筆記內容…">
+      </div>
+    </div>
+    <div class="chapter-scroll chip-filter" id="chapterFilter"></div>
+    <div class="tested-filter-row">
+      <span class="tf-label">考古題篩選：</span>
+      <div class="chip-filter" id="testedFilter">
+        <button class="chip tf-chip active" data-tf="all">全部</button>
+        <button class="chip tf-chip" data-tf="yes">✓ 已考過</button>
+        <button class="chip tf-chip" data-tf="no">✕ 未考過</button>
+        <button class="chip tf-chip" data-tf="unset">尚未標記</button>
+      </div>
+    </div>
+    <div class="range-indicator" id="rangeIndicator" style="display:none;"></div>
+    <div class="result-count" id="resultCount"></div>
+    <div id="cardList"></div>
+  `;
+
+  document.getElementById('searchInput').addEventListener('input', (e)=>{
+    currentQuery = e.target.value.trim();
+    renderCards();
+  });
+  document.querySelectorAll('.tf-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      testedFilter = btn.dataset.tf;
+      document.querySelectorAll('.tf-chip').forEach(b=>b.classList.toggle('active', b===btn));
+      renderCards();
+    });
+  });
+
+  const unclassifiedTa = document.getElementById('unclassified_ta');
+  unclassifiedTa.addEventListener('input', ()=>{
+    queueSave('unclassified', unclassifiedTa.dataset.law, '', unclassifiedTa.innerHTML, 'unclassified_ta');
+  });
+  document.getElementById('unclassifiedReset').addEventListener('click', ()=>{
+    const lawKey = unclassifiedTa.dataset.law;
+    const fallback = toEditableHtml(DATA[lawKey].unclassified || '');
+    const undoVal = getUndoValue('unclassified', lawKey, '', fallback);
+    unclassifiedTa.innerHTML = undoVal;
+    queueSave('unclassified', lawKey, '', undoVal, 'unclassified_ta');
+  });
+  wireFmtButtons(document);
+
+  // ---------- Add a new entry directly (大法官解釋 / 憲法法庭判決) without re-importing JSON ----------
+  // (bound here, not at top level, because #addEntryBtn only exists after this template renders)
+  document.getElementById('printBtn').addEventListener('click', ()=>{
+    window.print();
+  });
+
+  document.getElementById('addEntryBtn').addEventListener('click', ()=>{
+    const overlay = document.getElementById('addEntryOverlay');
+    document.getElementById('addEntryTitle').textContent = currentLaw === 'concourtjudg' ? '新增一則判決' : '新增一則解釋';
+    document.getElementById('addEntryNo').value = '';
+    document.getElementById('addEntryTitleInput').value = '';
+    document.getElementById('addEntryChapter').value = '';
+    document.getElementById('addEntryError').textContent = '';
+    const dl = document.getElementById('addEntryChapterList');
+    dl.innerHTML = (DATA[currentLaw].chapters || []).map(c=>`<option value="${escapeHtml(c)}">`).join('');
+    overlay.style.display = 'flex';
+    document.getElementById('addEntryNo').focus();
+  });
+}
+
+// ---------- Sidebar: subjects grouped by legal field, collapsible ----------
+const LAW_CATEGORIES = [
+  { name: '公法', keys: ['constitution', 'constcourt', 'justiceinterp', 'concourtjudg', 'admproc', 'admpenalty', 'admexec', 'appeal', 'statecomp', 'localgov', '憲法及憲法增修條文', '憲法訴訟法', '大法官解釋', '憲法法庭判決', '行政程序法', '行政罰法', '行政執行法', '訴願法', '國家賠償法', '地方制度法', '行政訴訟法', 'admlitigation'] },
+  { name: '民事法', keys: ['civil', 'civpro', 'family', 'compulsory', 'foreign', '民法', '民事訴訟法', '家事事件法', '強制執行法', '涉外民事法律適用法'] },
+  { name: '刑事法', keys: ['criminal', 'crimpro', '刑法', '刑事訴訟法'] },
+  { name: '商法', keys: ['company', 'securities', 'insurance', 'negotiable', '公司法', '證券交易法', '保險法', '票據法'] },
+  { name: '財稅法', keys: ['taxcollection', 'incometax', 'estatetax', 'customs', '稅捐稽徵法', '所得稅法', '遺產及贈與稅法', '關稅法'] },
+];
+// categories the user has manually collapsed/expanded this session (default: all open)
+const categoryCollapsed = {};
+
+function buildLawNav(){
+  const lawNav = document.getElementById('lawNav');
+  lawNav.innerHTML = '';
+
+  const searching = !!lawSearchQuery;
+  const usedKeys = new Set();
+
+  const makeLawItem = (key)=>{
+    const title = DATA[key].title;
+    const li = document.createElement('li');
+    li.className = 'law-item';
+    const btn = document.createElement('button');
+    btn.className = 'law-btn';
+    btn.dataset.key = key;
+    if(key === currentLaw) btn.classList.add('active');
+    btn.innerHTML = `<span>${title}</span><span class="law-count">${DATA[key].articles.length}</span>`;
+    btn.addEventListener('click', ()=>{
+      currentLaw = key;
+      currentChapter = 'all';
+      currentQuery = '';
+      const si = document.getElementById('searchInput');
+      if(si) si.value = '';
+      render();
+    });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'law-delete-btn';
+    delBtn.title = `刪除「${title}」這個科目`;
+    delBtn.textContent = '🗑';
+    delBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      deleteLawSubject(key, title);
+    });
+    li.appendChild(btn);
+    li.appendChild(delBtn);
+    return li;
+  };
+
+  const matchesSearch = (key)=>{
+    if(!searching) return true;
+    return DATA[key].title.toLowerCase().includes(lawSearchQuery.toLowerCase());
+  };
+
+  for(const cat of LAW_CATEGORIES){
+    const present = cat.keys.filter(k => DATA[k] && matchesSearch(k));
+    cat.keys.forEach(k => { if(DATA[k]) usedKeys.add(k); });
+    if(present.length === 0) continue;
+
+    const catLi = document.createElement('li');
+    catLi.className = 'law-cat';
+    const header = document.createElement('button');
+    header.className = 'law-cat-header';
+    // while searching, force categories open so matches are visible
+    const collapsed = searching ? false : !!categoryCollapsed[cat.name];
+    header.innerHTML = `<span class="law-cat-arrow">${collapsed ? '▸' : '▾'}</span><span>${cat.name}</span><span class="law-cat-count">${present.length}</span>`;
+    header.addEventListener('click', ()=>{
+      categoryCollapsed[cat.name] = !categoryCollapsed[cat.name];
+      buildLawNav();
+    });
+    catLi.appendChild(header);
+
+    if(!collapsed){
+      const inner = document.createElement('ul');
+      inner.className = 'law-cat-body';
+      present.forEach(key => inner.appendChild(makeLawItem(key)));
+      catLi.appendChild(inner);
+    }
+    lawNav.appendChild(catLi);
+  }
+
+  // anything not covered by the category map (e.g. newly imported subjects) goes to 其他
+  const leftovers = lawKeys.filter(k => !usedKeys.has(k) && matchesSearch(k));
+  if(leftovers.length > 0){
+    const catLi = document.createElement('li');
+    catLi.className = 'law-cat';
+    const header = document.createElement('button');
+    header.className = 'law-cat-header';
+    const collapsed = searching ? false : !!categoryCollapsed['其他'];
+    header.innerHTML = `<span class="law-cat-arrow">${collapsed ? '▸' : '▾'}</span><span>其他</span><span class="law-cat-count">${leftovers.length}</span>`;
+    header.addEventListener('click', ()=>{
+      categoryCollapsed['其他'] = !categoryCollapsed['其他'];
+      buildLawNav();
+    });
+    catLi.appendChild(header);
+    if(!collapsed){
+      const inner = document.createElement('ul');
+      inner.className = 'law-cat-body';
+      leftovers.forEach(key => inner.appendChild(makeLawItem(key)));
+      catLi.appendChild(inner);
+    }
+    lawNav.appendChild(catLi);
+  }
+}
+
+async function deleteLawSubject(key, title){
+  const confirmText = prompt(`確定要刪除「${title}」嗎？這會清掉這科所有的條文、筆記、圖片、PDF附件等資料，無法復原。\n\n請輸入「刪除」兩個字確認：`);
+  if(confirmText !== '刪除') return;
+
+  const label = document.getElementById('exportProgressLabel');
+  if(label) label.textContent = `刪除「${title}」中…`;
+
+  const perArticlePrefixes = [
+    'note::', 'exam::', 'answerCopy::', 'originalText::',
+    'origHighlight::', 'engHighlight::', 'tested::',
+    'examimg::', 'pdfmeta::', 'attachpdfmeta::',
+    'pdfchunk::', 'attachpdfchunk::'
+  ];
+  try{
+    for(const prefix of perArticlePrefixes){
+      const fullPrefix = `${prefix}${key}::`;
+      try{
+        const listRes = await window.storage.list(fullPrefix, false);
+        const keys = (listRes && listRes.keys) || [];
+        for(const k of keys){
+          try{ await window.storage.delete(k, false); }catch(e){}
+        }
+      }catch(e){}
+    }
+    try{ await window.storage.delete(`unclassified::${key}`, false); }catch(e){}
+    await window.storage.delete(`lawcontent::${key}`, false);
+
+    delete DATA[key];
+    lawKeys = Object.keys(DATA);
+    if(currentLaw === key){
+      currentLaw = lawKeys[0] || null;
+      currentChapter = 'all';
+      currentQuery = '';
+      currentRange = null;
+    }
+    if(label) label.textContent = `已刪除「${title}」`;
+    if(currentLaw){
+      render();
+    } else {
+      buildLawNav();
+      document.getElementById('cardList').innerHTML = `<div class="empty-state"><div class="big">已經沒有任何科目了</div>用「➕ 新增科目 / 匯入新資料」再匯入一次</div>`;
+    }
+  }catch(err){
+    if(label) label.textContent = '刪除失敗：' + (err.message || String(err));
+  }finally{
+    setTimeout(()=>{ if(label) label.textContent=''; }, 5000);
+  }
+}
+
+document.getElementById('lawSearch').addEventListener('input', (e)=>{
+  lawSearchQuery = e.target.value.trim();
+  buildLawNav();
+});
+
+// ---------- Export current data (including all your edits) for manual sync ----------
+async function buildExportObjectForLaw(lawKey){
+  const law = DATA[lawKey];
+  await Promise.all([
+    ensureFieldLoaded('note', lawKey),
+    ensureFieldLoaded('answerCopy', lawKey),
+    ensureFieldLoaded('exam', lawKey),
+    ensureTestedLoaded(lawKey),
+    ensureImagesLoaded(lawKey)
+  ]);
+  const exportedArticles = law.articles.map(a=>{
+    const out = {
+      no: a.no,
+      title: a.title || '',
+      chapter: a.chapter,
+      original: a.original,
+      english: a.english || [],
+      note: getFieldValue('note', lawKey, a.no, a.note),
+      exam: getFieldValue('exam', lawKey, a.no, a.exam || ''),
+      answerCopy: getFieldValue('answerCopy', lawKey, a.no, a.answerCopy || '')
+    };
+    const tested = getTestedState(lawKey, a.no);
+    if(tested !== 'unset') out.tested = tested;
+    const imgs = getImages(lawKey, a.no);
+    if(imgs.length > 0) out.images = imgs;
+    return out;
+  });
+  return {
+    title: law.title,
+    chapters: law.chapters,
+    outline: law.outline || [],
+    unclassified: getFieldValue('unclassified', lawKey, '', law.unclassified || ''),
+    articles: exportedArticles
+  };
+}
+
+function downloadJsonFile(filename, obj){
+  const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+function downloadBlob(filename, blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+// ---------- Minimal dependency-free ZIP writer (STORE method, no compression) ----------
+// Standard ZIP file format, hand-written so this works offline with no external library.
+const CRC32_TABLE = (()=>{
+  const table = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c = n;
+    for(let k=0;k<8;k++){
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes){
+  let crc = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++){
+    crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosDateTime(){
+  const d = new Date();
+  const time = ((d.getHours() & 0x1F) << 11) | ((d.getMinutes() & 0x3F) << 5) | ((d.getSeconds() >> 1) & 0x1F);
+  const date = (((d.getFullYear()-1980) & 0x7F) << 9) | (((d.getMonth()+1) & 0xF) << 5) | (d.getDate() & 0x1F);
+  return { time, date };
+}
+
+function writeUint32(arr, offset, val){
+  arr[offset] = val & 0xFF;
+  arr[offset+1] = (val >>> 8) & 0xFF;
+  arr[offset+2] = (val >>> 16) & 0xFF;
+  arr[offset+3] = (val >>> 24) & 0xFF;
+}
+function writeUint16(arr, offset, val){
+  arr[offset] = val & 0xFF;
+  arr[offset+1] = (val >>> 8) & 0xFF;
+}
+
+// files: array of { name: string, content: string }  (content is treated as UTF-8 text)
+function buildZip(files){
+  const encoder = new TextEncoder();
+  const { time, date } = dosDateTime();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for(const file of files){
+    const nameBytes = encoder.encode(file.name);
+    const dataBytes = encoder.encode(file.content);
+    const crc = crc32(dataBytes);
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    writeUint32(local, 0, 0x04034b50);
+    writeUint16(local, 4, 20);
+    writeUint16(local, 6, 0);
+    writeUint16(local, 8, 0); // no compression (store)
+    writeUint16(local, 10, time);
+    writeUint16(local, 12, date);
+    writeUint32(local, 14, crc);
+    writeUint32(local, 18, dataBytes.length);
+    writeUint32(local, 22, dataBytes.length);
+    writeUint16(local, 26, nameBytes.length);
+    writeUint16(local, 28, 0);
+    local.set(nameBytes, 30);
+
+    localParts.push(local, dataBytes);
+
+    const central = new Uint8Array(46 + nameBytes.length);
+    writeUint32(central, 0, 0x02014b50);
+    writeUint16(central, 4, 20);
+    writeUint16(central, 6, 20);
+    writeUint16(central, 8, 0);
+    writeUint16(central, 10, 0);
+    writeUint16(central, 12, time);
+    writeUint16(central, 14, date);
+    writeUint32(central, 16, crc);
+    writeUint32(central, 20, dataBytes.length);
+    writeUint32(central, 24, dataBytes.length);
+    writeUint16(central, 28, nameBytes.length);
+    writeUint16(central, 30, 0);
+    writeUint16(central, 32, 0);
+    writeUint16(central, 34, 0);
+    writeUint16(central, 36, 0);
+    writeUint32(central, 38, 0);
+    writeUint32(central, 42, offset);
+    central.set(nameBytes, 46);
+
+    centralParts.push(central);
+    offset += local.length + dataBytes.length;
+  }
+
+  const centralStart = offset;
+  let centralSize = 0;
+  for(const c of centralParts) centralSize += c.length;
+
+  const end = new Uint8Array(22);
+  writeUint32(end, 0, 0x06054b50);
+  writeUint16(end, 4, 0);
+  writeUint16(end, 6, 0);
+  writeUint16(end, 8, files.length);
+  writeUint16(end, 10, files.length);
+  writeUint32(end, 12, centralSize);
+  writeUint32(end, 16, centralStart);
+  writeUint16(end, 20, 0);
+
+  return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
+}
+
+// ---------- Add-entry modal: close/submit handlers (these elements are static, so this is safe at top level) ----------
+document.getElementById('addEntryClose').addEventListener('click', ()=>{
+  document.getElementById('addEntryOverlay').style.display = 'none';
+});
+document.getElementById('addEntryOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'addEntryOverlay') document.getElementById('addEntryOverlay').style.display = 'none';
+});
+
+document.getElementById('addEntrySubmit').addEventListener('click', async ()=>{
+  const no = document.getElementById('addEntryNo').value.trim();
+  const title = document.getElementById('addEntryTitleInput').value.trim();
+  const chapter = document.getElementById('addEntryChapter').value.trim() || '未分類（自行新增）';
+  const errEl = document.getElementById('addEntryError');
+  if(!no){
+    errEl.textContent = '請填寫字號／案號';
+    return;
+  }
+  const law = DATA[currentLaw];
+  if(law.articles.some(a => a.no === no)){
+    errEl.textContent = '這個字號已經存在了，換一個或直接去該則編輯';
+    return;
+  }
+  errEl.textContent = '';
+  const newArticle = {
+    no, title, chapter,
+    original: [''],
+    english: [],
+    note: '',
+    exam: '',
+    answerCopy: ''
+  };
+  law.articles.push(newArticle);
+  if(!law.chapters.includes(chapter)) law.chapters.push(chapter);
+  law.outline = law.outline || [];
+  const existingRow = law.outline.find(r => r.label === chapter && r.level === 1);
+  if(existingRow){
+    existingRow.range = [existingRow.range[0], no];
+  } else {
+    law.outline.push({ level: 1, label: chapter, range: [no, no] });
+  }
+  try{
+    await window.storage.set(`lawcontent::${currentLaw}`, JSON.stringify(law), false);
+  }catch(e){
+    errEl.textContent = '儲存失敗：' + (e.message || String(e));
+    return;
+  }
+  document.getElementById('addEntryOverlay').style.display = 'none';
+  currentChapter = 'all';
+  currentRange = null;
+  currentQuery = no;
+  render();
+  setTimeout(()=>{
+    const si = document.getElementById('searchInput');
+    if(si) si.value = no;
+  }, 50);
+});
+
+document.getElementById('activityLogBtn').addEventListener('click', ()=>{
+  showActivityLogOverlay();
+});
+document.getElementById('activityLogClose').addEventListener('click', ()=>{
+  document.getElementById('activityLogOverlay').style.display = 'none';
+});
+document.getElementById('activityLogOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'activityLogOverlay') document.getElementById('activityLogOverlay').style.display = 'none';
+});
+
+document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('exportDataBtn');
+  const label = document.getElementById('exportProgressLabel');
+  btn.disabled = true;
+  try{
+    const files = [];
+    for(let i=0;i<lawKeys.length;i++){
+      const key = lawKeys[i];
+      label.textContent = `匯出中… ${i+1} / ${lawKeys.length}（${DATA[key].title}）`;
+      const obj = await buildExportObjectForLaw(key);
+      files.push({ name: `${key}.json`, content: JSON.stringify(obj) });
+    }
+    label.textContent = `打包成 zip 中…`;
+    const zipBlob = buildZip(files);
+    const today = new Date().toISOString().slice(0,10);
+    downloadBlob(`六法工具箱-匯出-${today}.zip`, zipBlob);
+    label.textContent = `匯出完成！請到瀏覽器的下載資料夾查看 zip 檔案`;
+  }catch(err){
+    label.textContent = '匯出失敗：' + (err.message || String(err));
+  }finally{
+    btn.disabled = false;
+    setTimeout(()=>{ if(label) label.textContent=''; }, 6000);
+  }
+});
+
+// ---------- Add more subjects while already logged in / already using the app ----------
+document.getElementById('addMoreLawsBtn').addEventListener('click', ()=>{
+  document.getElementById('addMoreLawsInput').click();
+});
+document.getElementById('addMoreLawsInput').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(files.length === 0) return;
+  const label = document.getElementById('exportProgressLabel');
+  const btn = document.getElementById('addMoreLawsBtn');
+  btn.disabled = true;
+  try{
+    for(let i=0;i<files.length;i++){
+      const file = files[i];
+      const key = file.name.replace(/\.json$/i, '');
+      label.textContent = `新增中… ${i+1} / ${files.length}（${file.name}）`;
+      const text = await file.text();
+      const lawObj = normalizeLawObject(key, JSON.parse(text));
+      await window.storage.set(`lawcontent::${key}`, JSON.stringify(lawObj), false);
+      DATA[key] = lawObj; // make it available immediately without needing a reload
+    }
+    lawKeys = Object.keys(DATA);
+    buildLawNav();
+    label.textContent = `新增完成！共加入 ${files.length} 個科目，左側清單已更新`;
+  }catch(err){
+    label.textContent = '新增失敗：' + (err.message || String(err));
+  }finally{
+    btn.disabled = false;
+    e.target.value = '';
+    setTimeout(()=>{ if(label) label.textContent=''; }, 6000);
+  }
+});
+
+// ---------- Global (cross-subject) search ----------
+let globalSearchLoading = false;
+let globalSearchTimer = null;
+
+async function ensureAllFieldsLoadedForGlobalSearch(){
+  const hint = document.getElementById('globalSearchHint');
+  if(hint) hint.textContent = '第一次全庫搜尋需要載入所有科目的筆記，請稍候…';
+  await Promise.all(lawKeys.map(k => Promise.all([
+    ensureFieldLoaded('note', k),
+    ensureFieldLoaded('answerCopy', k),
+    ensureFieldLoaded('exam', k)
+  ])));
+  if(hint) hint.textContent = '';
+}
+
+function highlightMatch(text, query){
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if(idx === -1) return escapeHtml(text.slice(0, 140));
+  const start = Math.max(0, idx - 40);
+  const end = Math.min(text.length, idx + query.length + 60);
+  const before = escapeHtml(text.slice(start, idx));
+  const match = escapeHtml(text.slice(idx, idx + query.length));
+  const after = escapeHtml(text.slice(idx + query.length, end));
+  return `${start > 0 ? '…' : ''}${before}<mark>${match}</mark>${after}${end < text.length ? '…' : ''}`;
+}
+
+function runGlobalSearch(query){
+  const q = query.trim().toLowerCase();
+  const overlay = document.getElementById('globalSearchOverlay');
+  const resultsEl = document.getElementById('globalSearchResults');
+  const titleEl = document.getElementById('globalSearchTitle');
+  if(!q){
+    overlay.style.display = 'none';
+    return;
+  }
+  overlay.style.display = 'flex';
+
+  const results = [];
+  const FIELD_LABELS = { original: '法條原文', note: '我的筆記', answerCopy: '抄答案', exam: '考題研究' };
+
+  for(const lawKey of lawKeys){
+    const law = DATA[lawKey];
+    if(!law) continue;
+    for(const a of law.articles){
+      const fieldsToCheck = [
+        ['original', a.original.join('\n')],
+        ['note', htmlToText(getFieldValue('note', lawKey, a.no, a.note))],
+        ['answerCopy', htmlToText(getFieldValue('answerCopy', lawKey, a.no, a.answerCopy || ''))],
+        ['exam', htmlToText(getFieldValue('exam', lawKey, a.no, a.exam || ''))]
+      ];
+      for(const [field, text] of fieldsToCheck){
+        if(text && text.toLowerCase().includes(q)){
+          results.push({ lawKey, lawTitle: law.title, a, field, text });
+          break; // one hit per article is enough for the result list
+        }
+      }
+      if(results.length >= 300) break;
+    }
+    if(results.length >= 300) break;
+  }
+
+  titleEl.textContent = `跨科目搜尋結果（共 ${results.length}${results.length>=300?'+':''} 則）`;
+  if(results.length === 0){
+    resultsEl.innerHTML = `<div class="empty-state"><div class="big">沒有找到符合的內容</div>試試其他關鍵字</div>`;
+    return;
+  }
+  resultsEl.innerHTML = results.map((r,i)=>`
+    <div class="gsr-item" data-idx="${i}">
+      <div><span class="gsr-law">${escapeHtml(r.lawTitle)}</span><span class="gsr-no">${escapeHtml(r.a.no)}</span></div>
+      <div class="gsr-snippet"><span class="gsr-field-tag">${FIELD_LABELS[r.field]}</span>${highlightMatch(r.text, q)}</div>
+    </div>
+  `).join('');
+
+  resultsEl.querySelectorAll('.gsr-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const r = results[Number(el.dataset.idx)];
+      overlay.style.display = 'none';
+      currentLaw = r.lawKey;
+      currentChapter = 'all';
+      currentRange = null;
+      currentQuery = document.getElementById('globalSearchInput').value.trim();
+      render();
+      setTimeout(()=>{
+        const si = document.getElementById('searchInput');
+        if(si) si.value = currentQuery;
+      }, 50);
+    });
+  });
+}
+
+document.getElementById('globalSearchInput').addEventListener('input', (e)=>{
+  const val = e.target.value;
+  clearTimeout(globalSearchTimer);
+  globalSearchTimer = setTimeout(async ()=>{
+    if(val.trim() && !globalSearchLoading){
+      globalSearchLoading = true;
+      await ensureAllFieldsLoadedForGlobalSearch();
+      globalSearchLoading = false;
+    }
+    runGlobalSearch(val);
+  }, 350);
+});
+document.getElementById('globalSearchClose').addEventListener('click', ()=>{
+  document.getElementById('globalSearchOverlay').style.display = 'none';
+});
+document.getElementById('globalSearchOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'globalSearchOverlay') document.getElementById('globalSearchOverlay').style.display = 'none';
+});
+
+function render(){
+  buildLawNav();
+  const law = DATA[currentLaw];
+  document.getElementById('kicker').textContent = `第 ${lawKeys.indexOf(currentLaw)+1} / ${lawKeys.length} 部`;
+  document.getElementById('lawTitle').textContent = law.title;
+  document.getElementById('lawDesc').textContent = `共 ${law.articles.length} 條，${law.chapters.length} 個章節分類`;
+
+  const addBtn = document.getElementById('addEntryBtn');
+  addBtn.style.display = EDITABLE_ORIGINAL_LAWS.includes(currentLaw) ? 'inline-block' : 'none';
+  addBtn.textContent = currentLaw === 'concourtjudg' ? '➕ 新增一則判決' : '➕ 新增一則解釋';
+
+  const chapterFilter = document.getElementById('chapterFilter');
+  chapterFilter.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'chip active';
+  allChip.textContent = '全部章節';
+  allChip.addEventListener('click', ()=>{ currentChapter='all'; currentRange=null; refreshChips(); renderCards(); });
+  chapterFilter.appendChild(allChip);
+  law.chapters.forEach(ch=>{
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = ch;
+    chip.dataset.chapter = ch;
+    chip.addEventListener('click', ()=>{ currentChapter = ch; currentRange=null; refreshChips(); renderCards(); });
+    chapterFilter.appendChild(chip);
+  });
+
+  currentRange = null;
+  renderOutline(currentLaw);
+  document.getElementById('outlineBlock').open = (law.outline || []).length <= 40;
+
+  const loadingLaw = currentLaw;
+  renderCards();
+
+  const unclassifiedTa = document.getElementById('unclassified_ta');
+  const unclassifiedBlock = document.getElementById('unclassifiedBlock');
+  const unclassifiedSummary = document.getElementById('unclassifiedSummary');
+  unclassifiedTa.dataset.law = loadingLaw;
+  unclassifiedTa.innerHTML = '載入中…';
+  loadUnclassified(loadingLaw).then(val=>{
+    if(unclassifiedTa.dataset.law !== loadingLaw) return;
+    unclassifiedTa.innerHTML = toEditableHtml(val);
+    const hasDefault = !!(law.unclassified && law.unclassified.trim());
+    unclassifiedBlock.open = hasDefault;
+    unclassifiedSummary.textContent = hasDefault
+      ? `無法分類的筆記（約 ${law.unclassified.split('\\n').length} 則，來自你的講義，點此收合／展開）`
+      : '無法分類的筆記（目前沒有內容，點此展開新增）';
+  });
+
+  Promise.all([
+    ensureTestedLoaded(loadingLaw),
+    ensureFieldLoaded('note', loadingLaw),
+    ensureFieldLoaded('answerCopy', loadingLaw),
+    ensureFieldLoaded('origHighlight', loadingLaw),
+    ensureFieldLoaded('engHighlight', loadingLaw),
+    ensureFieldLoaded('exam', loadingLaw),
+    ensureImagesLoaded(loadingLaw),
+    ensurePdfMetaLoaded(loadingLaw),
+    ensureAttachMetaLoaded(loadingLaw)
+  ]).then(()=>{
+    if(currentLaw !== loadingLaw) return;
+    renderCards();
+    const imgsRow = document.getElementById('imgs_unclassified');
+    if(imgsRow){
+      imgsRow.innerHTML = thumbsHtml(loadingLaw, UNCLASSIFIED_IMG_NO);
+      wireThumbRow(imgsRow);
+    }
+    renderUnclassifiedAttach(loadingLaw);
+  });
+}
+
+// ---------- PDF attachment for the unclassified-notes block ----------
+function renderUnclassifiedAttach(lawKey){
+  const wrap = document.getElementById('unclassifiedAttachWrap');
+  if(!wrap) return;
+  const meta = getAttachMeta(lawKey, UNCLASSIFIED_IMG_NO);
+  if(meta){
+    wrap.innerHTML = `
+      <div class="attach-pdf-wrap">
+        <div class="attach-pdf-head">
+          <span>📎 附件：${escapeHtml(meta.filename)}</span>
+          <button class="pdf-upload-btn remove-pdf" id="unclassifiedAttachRemove">✕ 移除附件</button>
+        </div>
+        <div class="pdf-preview-box attach-pdf-box" id="unclassifiedAttachBox">
+          <div class="pdf-loading-msg">PDF 載入中…</div>
+        </div>
+      </div>`;
+    document.getElementById('unclassifiedAttachRemove').addEventListener('click', async ()=>{
+      if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
+      await deleteAttach(lawKey, UNCLASSIFIED_IMG_NO);
+      renderUnclassifiedAttach(lawKey);
+    });
+    (async ()=>{
+      try{
+        const dataUrl = await loadAttachData(lawKey, UNCLASSIFIED_IMG_NO);
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(!dataUrl || !box) return;
+        box.innerHTML = `
+          <iframe src="${dataUrl}#toolbar=0" title="附件 PDF 預覽"></iframe>
+          <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+        `;
+      }catch(e){
+        const box = document.getElementById('unclassifiedAttachBox');
+        if(box) box.innerHTML = `<div class="pdf-loading-msg">附件 PDF 載入失敗</div>`;
+      }
+    })();
+  } else {
+    wrap.innerHTML = `<button type="button" class="pdf-upload-btn" id="unclassifiedAttachUpload" style="margin-top:8px;">📎 上傳附件 PDF（學者文章等）</button>`;
+    document.getElementById('unclassifiedAttachUpload').addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳附件 PDF 中… 0%`;
+          await saveAttachFile(lawKey, UNCLASSIFIED_IMG_NO, file, (done, total)=>{
+            if(label) label.textContent = `上傳附件 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = '附件 PDF 上傳完成';
+          renderUnclassifiedAttach(lawKey);
+        }catch(err){
+          if(label) label.textContent = '附件 PDF 上傳失敗：' + (err.message || String(err));
+        }finally{
+          setTimeout(()=>{ if(label) label.textContent=''; }, 5000);
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+}
+
+function renderOutline(lawKey){
+  const outline = DATA[lawKey].outline || [];
+  const body = document.getElementById('outlineBody');
+  if(outline.length === 0){
+    body.innerHTML = `<div style="color:var(--ink-soft);font-size:12.5px;">此法規未偵測到編章節結構。</div>`;
+    return;
+  }
+  body.innerHTML = outline.map(row=>{
+    const rangeTxt = row.range ? `${row.range[0]}${row.range[1] !== row.range[0] ? '～'+row.range[1] : ''}` : '';
+    if(row.range){
+      return `<div class="outline-row lvl-${row.level}">
+        <button class="outline-jump" data-start="${escapeHtml(row.range[0])}" data-end="${escapeHtml(row.range[1])}" data-label="${escapeHtml(row.label)}">
+          <span class="outline-label">${escapeHtml(row.label)}</span>
+          <span class="outline-range">§${escapeHtml(rangeTxt)}</span>
+        </button>
+      </div>`;
+    }
+    return `<div class="outline-row lvl-${row.level}"><span class="outline-label">${escapeHtml(row.label)}</span></div>`;
+  }).join('');
+
+  body.querySelectorAll('.outline-jump').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentRange = { startNo: btn.dataset.start, endNo: btn.dataset.end, label: btn.dataset.label };
+      currentChapter = 'all';
+      currentQuery = '';
+      const si = document.getElementById('searchInput');
+      if(si) si.value = '';
+      refreshChips();
+      renderCards();
+      document.getElementById('outlineBlock').open = false;
+    });
+  });
+}
+
+function refreshChips(){
+  document.querySelectorAll('#chapterFilter .chip').forEach(c=>{
+    const isAll = c.textContent === '全部章節';
+    c.classList.toggle('active', (isAll && currentChapter==='all') || c.dataset.chapter === currentChapter);
+  });
+}
+
+function renderCards(){
+  const law = DATA[currentLaw];
+  const q = currentQuery.toLowerCase();
+
+  let rangeStartIdx = -1, rangeEndIdx = -1;
+  if(currentRange){
+    rangeStartIdx = law.articles.findIndex(a=>a.no===currentRange.startNo);
+    rangeEndIdx = law.articles.findIndex(a=>a.no===currentRange.endNo);
+  }
+
+  const filtered = law.articles.filter((a, idx)=>{
+    const matchChapter = currentChapter === 'all' || a.chapter === currentChapter;
+    const matchRange = !currentRange || (idx >= rangeStartIdx && idx <= rangeEndIdx);
+    const noteVal = htmlToText(getFieldValue('note', currentLaw, a.no, a.note));
+    const answerVal = htmlToText(getFieldValue('answerCopy', currentLaw, a.no, a.answerCopy || ''));
+    const examVal = htmlToText(getFieldValue('exam', currentLaw, a.no, a.exam || ''));
+    const haystack = (a.no + a.chapter + a.original.join(' ') + noteVal + answerVal + examVal).toLowerCase();
+    const matchQuery = q === '' || haystack.includes(q);
+    const matchTested = testedFilter === 'all' || getTestedState(currentLaw, a.no) === testedFilter;
+    return matchChapter && matchRange && matchQuery && matchTested;
+  });
+
+  const rangeIndicator = document.getElementById('rangeIndicator');
+  if(currentRange){
+    rangeIndicator.style.display = 'flex';
+    rangeIndicator.innerHTML = `📖 目前範圍：<b>${escapeHtml(currentRange.label)}</b>（${escapeHtml(currentRange.startNo)}${currentRange.endNo!==currentRange.startNo ? '～'+escapeHtml(currentRange.endNo) : ''}）<button class="clear-range" id="clearRangeBtn">✕ 清除範圍</button>`;
+    document.getElementById('clearRangeBtn').addEventListener('click', ()=>{
+      currentRange = null;
+      renderCards();
+    });
+  } else {
+    rangeIndicator.style.display = 'none';
+    rangeIndicator.innerHTML = '';
+  }
+
+  document.getElementById('resultCount').textContent = `共 ${filtered.length} 則法條`;
+  const list = document.getElementById('cardList');
+  list.innerHTML = '';
+
+  if(filtered.length === 0){
+    list.innerHTML = `<div class="empty-state"><div class="big">查無符合的法條</div>試試更換關鍵字、選擇「全部章節」或將考古題篩選調回「全部」</div>`;
+    return;
+  }
+
+  const MAX_RENDER = 800;
+  const toRender = filtered.slice(0, MAX_RENDER);
+
+  toRender.forEach(a=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const noteId = `note_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const answerId = `answer_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const examId = `exam_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const origId = `orig_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const ttId = `tt_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+    const ttState = getTestedState(currentLaw, a.no);
+    const noteVal = getFieldValue('note', currentLaw, a.no, a.note);
+    const answerVal = getFieldValue('answerCopy', currentLaw, a.no, a.answerCopy || '');
+    const answerSeeded = !!(a.answerCopy && a.answerCopy.trim());
+    const examVal = getFieldValue('exam', currentLaw, a.no, a.exam || '');
+    const examSeeded = !!(a.exam && a.exam.trim());
+    const editableOriginal = EDITABLE_ORIGINAL_LAWS.includes(currentLaw);
+    const seededOriginalText = (a.original || []).join('\n\n');
+    const origVal = editableOriginal ? getFieldValue('originalText', currentLaw, a.no, seededOriginalText) : '';
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <span class="article-no">${a.no}</span>
+          ${a.title ? `<div class="article-title-mini">${escapeHtml(a.title)}</div>` : ''}
+          <div class="chapter-tag">${a.chapter}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${answerSeeded ? '<span class="has-note-badge">✍ 已帶入抄答案</span>' : ''}
+          ${examSeeded ? '<span class="has-note-badge">📎 已帶入考題筆記</span>' : ''}
+          <button class="tested-toggle state-${ttState}" id="${ttId}" data-law="${currentLaw}" data-no="${a.no}">${testedLabel(ttState)}</button>
+          ${editableOriginal ? `<button class="pdf-upload-btn remove-pdf" data-delete-entry="1" data-law="${currentLaw}" data-no="${a.no}">🗑 刪除此則</button>` : ''}
+        </div>
+      </div>
+      <div class="divider"></div>
+      ${editableOriginal ? (()=>{
+        const pdfMeta = getPdfMeta(currentLaw, a.no);
+        if(pdfMeta){
+          return `
+          <div class="block original">
+            <div class="note-head">
+              <div class="block-label">法條原文（PDF 預覽：${escapeHtml(pdfMeta.filename)}）</div>
+              <div class="note-actions">
+                <button class="pdf-upload-btn remove-pdf" data-pdf-remove="1" data-law="${currentLaw}" data-no="${a.no}">✕ 移除PDF，改回文字</button>
+              </div>
+            </div>
+            <div class="pdf-preview-box" id="pdfbox_${cssSafe(currentLaw)}_${cssSafe(a.no)}" data-law="${currentLaw}" data-no="${a.no}">
+              <div class="pdf-loading-msg">PDF 載入中…</div>
+            </div>
+          </div>`;
+        }
+        return `
+      <div class="block original">
+        <div class="note-head">
+          <div class="block-label">法條原文（可編輯／可貼上完整PDF原文）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${origId}"></span>
+            <button class="reset-btn" data-field="originalText" data-reset="${origId}" data-default="${encodeURIComponent(seededOriginalText)}">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="pdf-upload-row">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="pdf-upload-btn" data-pdf-upload="1" data-law="${currentLaw}" data-no="${a.no}">📄 上傳 PDF</button>
+        </div>
+        <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${origId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上解釋文、理由書、意見書全文…">${toEditableHtml(origVal)}</div>
+      </div>`;
+      })() : (()=>{
+        const origBlockId = `origblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+        const origOverride = getFieldValue('origHighlight', currentLaw, a.no, null);
+        return `
+      <div class="block original">
+        <div class="note-head">
+          <div class="block-label">法條原文</div>
+          <div class="note-actions">
+            <button class="reset-btn" data-highlight-reset="1" data-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${origBlockId}">↩ 清除全部螢光</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${origBlockId}" data-manual-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到條文本身）">🖍 螢光筆</button>
+        </div>
+        ${renderOriginalBlock(a.original, origBlockId, origOverride)}
+      </div>`;
+      })()}
+      ${(()=>{
+        const engBlockId = `engblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+        const engOverride = getFieldValue('engHighlight', currentLaw, a.no, null);
+        return `
+      <div class="block english">
+        <div class="note-head">
+          <div class="block-label">英文對照 · English</div>
+          <div class="note-actions">
+            <button class="reset-btn" data-highlight-reset="1" data-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${engBlockId}">↩ 清除全部螢光</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${engBlockId}" data-manual-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到內容本身）">🖍 螢光筆</button>
+        </div>
+        ${renderEnglishBlock(a.english, engBlockId, engOverride)}
+      </div>`;
+      })()}
+      <div class="block note-block">
+        <div class="note-head">
+          <div class="block-label note-label">我的筆記（自動儲存）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${noteId}"></span>
+            <button class="reset-btn" data-field="note" data-reset="${noteId}" data-default="${encodeURIComponent(a.note)}">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${noteId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
+        </div>
+        <div class="note-area" contenteditable="true" data-field="note" id="${noteId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡可以寫下你自己的筆記…">${toEditableHtml(noteVal)}</div>
+      </div>
+      <div class="block note-block">
+        <div class="note-head">
+          <div class="block-label note-label">抄答案（自動儲存）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${answerId}"></span>
+            <button class="reset-btn" data-field="answerCopy" data-reset="${answerId}" data-default="${encodeURIComponent(a.answerCopy || '')}">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${answerId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
+        </div>
+        <div class="note-area" contenteditable="true" data-field="answerCopy" id="${answerId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="這裡放申論題的模範作答／可直接抄的答案內容…">${toEditableHtml(answerVal)}</div>
+      </div>
+      <div class="block note-block">
+        <div class="note-head">
+          <div class="block-label note-label">考題研究（自動儲存）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${examId}"></span>
+            <button class="reset-btn" data-field="exam" data-reset="${examId}" data-default="${encodeURIComponent(a.exam || '')}">↩ 回到上一步</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${examId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
+          <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>
+        </div>
+        <div class="note-area" contenteditable="true" data-field="exam" id="${examId}" data-law="${currentLaw}" data-no="${a.no}" data-placeholder="貼上考古題、實務案例、爭點討論…（部分內容已從你的講義自動帶入）">${toEditableHtml(examVal)}</div>
+        <div class="exam-images-row" id="imgs_${cssSafe(currentLaw)}_${cssSafe(a.no)}">${thumbsHtml(currentLaw, a.no)}</div>
+        <div class="exam-image-hint">圖片會自動縮小後才儲存，點縮圖可放大檢視</div>
+        ${(()=>{
+          const attMeta = getAttachMeta(currentLaw, a.no);
+          if(attMeta){
+            return `
+            <div class="attach-pdf-wrap">
+              <div class="attach-pdf-head">
+                <span>📎 附件：${escapeHtml(attMeta.filename)}</span>
+                <button class="pdf-upload-btn remove-pdf" data-attach-remove="1" data-law="${currentLaw}" data-no="${a.no}">✕ 移除附件</button>
+              </div>
+              <div class="pdf-preview-box attach-pdf-box" id="attachbox_${cssSafe(currentLaw)}_${cssSafe(a.no)}" data-law="${currentLaw}" data-no="${a.no}">
+                <div class="pdf-loading-msg">PDF 載入中…</div>
+              </div>
+            </div>`;
+          }
+          return `
+            <button type="button" class="pdf-upload-btn" data-attach-upload="1" data-law="${currentLaw}" data-no="${a.no}">📎 上傳附件 PDF（學者文章等）</button>`;
+        })()}
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  document.querySelectorAll('.exam-images-row').forEach(wireThumbRow);
+
+  // PDF upload buttons (editable-original laws only)
+  document.querySelectorAll('[data-pdf-upload]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳 PDF 中… 0%`;
+          await savePdfFile(lawKey, no, file, (done, total)=>{
+            if(label) label.textContent = `上傳 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = 'PDF 上傳完成';
+          renderCards();
+        }catch(err){
+          if(label) label.textContent = 'PDF 上傳失敗：' + (err.message || String(err));
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  });
+
+  document.querySelectorAll('[data-pdf-remove]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      if(!confirm('確定要移除這份 PDF 嗎？（原本的文字版本會保留，可以再貼回去）')) return;
+      await deletePdf(lawKey, no);
+      renderCards();
+    });
+  });
+
+  // ---------- General-purpose attachment PDF (any law, any article) ----------
+  document.querySelectorAll('[data-attach-upload]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.style.display = 'none';
+      input.addEventListener('change', async ()=>{
+        const file = input.files && input.files[0];
+        input.remove();
+        if(!file) return;
+        const label = document.getElementById('exportProgressLabel');
+        try{
+          if(label) label.textContent = `上傳附件 PDF 中… 0%`;
+          await saveAttachFile(lawKey, no, file, (done, total)=>{
+            if(label) label.textContent = `上傳附件 PDF 中… ${Math.round(done/total*100)}%`;
+          });
+          if(label) label.textContent = '附件 PDF 上傳完成';
+          renderCards();
+        }catch(err){
+          if(label) label.textContent = '附件 PDF 上傳失敗：' + (err.message || String(err));
+        }
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  });
+
+  document.querySelectorAll('[data-attach-remove]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      if(!confirm('確定要移除這份附件 PDF 嗎？')) return;
+      await deleteAttach(lawKey, no);
+      renderCards();
+    });
+  });
+
+  // ---------- Manual highlighter for read-only 法條原文 / 英文對照 blocks ----------
+  document.querySelectorAll('.manual-highlight-btn').forEach(btn=>{
+    if(btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener('mousedown', (e)=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      openManualHighlighterPopover(btn, btn.dataset.manualTarget, btn.dataset.manualField, btn.dataset.law, btn.dataset.no);
+    });
+  });
+
+  document.querySelectorAll('[data-highlight-reset]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('確定要清除這個區塊裡全部的螢光筆標記嗎？（不會影響文字內容）')) return;
+      const field = btn.dataset.field, lawKey = btn.dataset.law, no = btn.dataset.no, blockId = btn.dataset.targetBlock;
+      await saveField(field, lawKey, no, '', `ind_manualhl_${cssSafe(lawKey)}_${cssSafe(no)}_${field}`);
+      renderCards();
+    });
+  });
+
+  document.querySelectorAll('.attach-pdf-box').forEach(async (box)=>{
+    const lawKey = box.dataset.law, no = box.dataset.no;
+    try{
+      const dataUrl = await loadAttachData(lawKey, no);
+      if(!dataUrl) return;
+      if(!document.body.contains(box)) return;
+      box.innerHTML = `
+        <iframe src="${dataUrl}#toolbar=0" title="附件 PDF 預覽"></iframe>
+        <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+      `;
+    }catch(e){
+      box.innerHTML = `<div class="pdf-loading-msg">附件 PDF 載入失敗</div>`;
+    }
+  });
+
+  // Render actual PDF previews into their boxes (async, after the boxes exist in the DOM)
+  document.querySelectorAll('.pdf-preview-box:not(.attach-pdf-box)').forEach(async (box)=>{
+    const lawKey = box.dataset.law, no = box.dataset.no;
+    try{
+      const dataUrl = await loadPdfData(lawKey, no);
+      if(!dataUrl) return;
+      // still the right card? (guards against fast law-switching)
+      if(!document.body.contains(box)) return;
+      box.innerHTML = `
+        <iframe src="${dataUrl}#toolbar=0" title="PDF 預覽"></iframe>
+        <a class="pdf-open-newtab" href="${dataUrl}" target="_blank" rel="noopener">⬈ 在新分頁開啟 PDF</a>
+      `;
+    }catch(e){
+      box.innerHTML = `<div class="pdf-loading-msg">PDF 載入失敗</div>`;
+    }
+  });
+
+  if(filtered.length > MAX_RENDER){
+    const more = document.createElement('div');
+    more.className = 'empty-state';
+    more.innerHTML = `<div class="big">還有 ${filtered.length - MAX_RENDER} 則未顯示</div>結果太多了，試試用搜尋框或章節篩選縮小範圍`;
+    list.appendChild(more);
+  }
+
+  list.querySelectorAll('.note-area').forEach(ta=>{
+    ta.addEventListener('input', ()=>{
+      queueSave(ta.dataset.field, ta.dataset.law, ta.dataset.no, ta.innerHTML, ta.id);
+    });
+  });
+
+  list.querySelectorAll('.reset-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const taId = btn.dataset.reset;
+      const ta = document.getElementById(taId);
+      const fallback = toEditableHtml(decodeURIComponent(btn.dataset.default));
+      const undoVal = getUndoValue(btn.dataset.field, ta.dataset.law, ta.dataset.no, fallback);
+      ta.innerHTML = undoVal;
+      queueSave(btn.dataset.field, ta.dataset.law, ta.dataset.no, undoVal, taId);
+    });
+  });
+
+  wireFmtButtons(list);
+
+  document.querySelectorAll('.tested-toggle').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const lawKey = btn.dataset.law, no = btn.dataset.no;
+      const next = nextTestedState(getTestedState(lawKey, no));
+      btn.className = `tested-toggle state-${next}`;
+      btn.textContent = testedLabel(next);
+      await setTestedState(lawKey, no, next);
+      if(testedFilter !== 'all') renderCards();
+    });
+  });
+}
+
+const backToTopBtn = document.getElementById('backToTopBtn');
+window.addEventListener('scroll', ()=>{
+  backToTopBtn.classList.toggle('show', window.scrollY > 400);
+});
+backToTopBtn.addEventListener('click', ()=>{
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ---------- Bootstrap: load law content from storage, or ask user to import it once ----------
+let lastStorageError = null;
+
+async function tryLoadDataFromStorage(){
+  const loaded = {};
+  lastStorageError = null;
+  try{
+    const prefix = 'lawcontent::';
+    const listRes = await window.storage.list(prefix, false);
+    const keys = (listRes && listRes.keys) || [];
+    if(keys.length === 0) return null;
+    for(const fullKey of keys){
+      try{
+        const res = await window.storage.get(fullKey, false);
+        if(res && typeof res.value === 'string'){
+          const shortKey = fullKey.startsWith(prefix) ? fullKey.slice(prefix.length) : fullKey;
+          try{
+            loaded[shortKey] = normalizeLawObject(shortKey, JSON.parse(res.value));
+          }catch(badLaw){
+            console.warn(`科目「${shortKey}」的資料格式無效，已略過載入：`, badLaw.message);
+          }
+        }
+      }catch(e){ /* skip this one key, keep whatever else loaded fine */ }
+    }
+  }catch(e){
+    lastStorageError = e;
+    return null;
+  }
+  return Object.keys(loaded).length > 0 ? loaded : null;
+}
+
+// Validate + normalize an imported law object so a malformed file (e.g. produced by a
+// different tool that doesn't know our schema) can never crash the whole app.
+// Throws a descriptive error if the file is fundamentally not a law-content file;
+// silently fills in any missing optional fields otherwise.
+function normalizeLawObject(key, obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)){
+    throw new Error(`「${key}.json」不是有效的科目資料檔（內容不是物件）`);
+  }
+  if(!Array.isArray(obj.articles) || obj.articles.length === 0){
+    throw new Error(`「${key}.json」缺少 articles 條文陣列，格式不符本工具的科目資料格式`);
+  }
+  obj.title = (typeof obj.title === 'string' && obj.title.trim()) ? obj.title : key;
+  obj.unclassified = typeof obj.unclassified === 'string' ? obj.unclassified : '';
+  if(!Array.isArray(obj.outline)) obj.outline = [];
+  obj.outline = obj.outline.filter(r => r && typeof r === 'object' && typeof r.label === 'string')
+    .map(r => ({ level: Number(r.level) || 1, label: r.label, range: (Array.isArray(r.range) && r.range.length === 2) ? r.range : null }));
+  const chapterSet = [];
+  obj.articles = obj.articles.map((a, i) => {
+    const na = (a && typeof a === 'object') ? a : {};
+    let original = na.original;
+    if(typeof original === 'string') original = [original];
+    if(!Array.isArray(original) || original.length === 0) original = ['（無條文內容）'];
+    original = original.map(p => typeof p === 'string' ? p : String(p ?? ''));
+    const chapter = (typeof na.chapter === 'string' && na.chapter) ? na.chapter : '（無章節標示）';
+    if(!chapterSet.includes(chapter)) chapterSet.push(chapter);
+    return {
+      no: (typeof na.no === 'string' && na.no) ? na.no : `第${i+1}條`,
+      title: typeof na.title === 'string' ? na.title : '',
+      chapter,
+      original,
+      english: Array.isArray(na.english) ? na.english.map(p => typeof p === 'string' ? p : String(p ?? '')) : [],
+      note: typeof na.note === 'string' ? na.note : '',
+      exam: typeof na.exam === 'string' ? na.exam : '',
+      answerCopy: typeof na.answerCopy === 'string' ? na.answerCopy : '',
+      tested: na.tested,
+      images: na.images
+    };
+  });
+  if(!Array.isArray(obj.chapters) || obj.chapters.length === 0) obj.chapters = chapterSet;
+  return obj;
+}
+
+async function saveOneLawToStorage(key, lawObj, index, total){
+  lawObj = normalizeLawObject(key, lawObj);
+  await window.storage.set(`lawcontent::${key}`, JSON.stringify(lawObj), false);
+  // If this file was produced by "匯出目前資料", it may also carry per-article
+  // tested-status and images that live under their own storage keys — restore those too.
+  if(Array.isArray(lawObj.articles)){
+    for(const a of lawObj.articles){
+      if(a.tested === 'yes' || a.tested === 'no'){
+        try{ await window.storage.set(`tested::${key}::${a.no}`, a.tested, false); }catch(e){}
+      }
+      if(Array.isArray(a.images) && a.images.length > 0){
+        try{ await window.storage.set(`examimg::${key}::${a.no}`, JSON.stringify(a.images), false); }catch(e){}
+      }
+    }
+  }
+  const bar = document.getElementById('importProgressBar');
+  const label = document.getElementById('importProgressLabel');
+  if(bar) bar.style.width = `${Math.round((index/total)*100)}%`;
+  if(label) label.textContent = `匯入中… ${index} / ${total}（${lawObj.title || key}）`;
+}
+
+function showImportScreen(errorMsg){
+  document.getElementById('appRoot').outerHTML = `
+    <div class="import-screen" id="appRoot">
+      <div class="import-card">
+        <div class="import-icon">⚖</div>
+        <h2>請先匯入你的法規資料檔</h2>
+        <p>把你要用的科目 .json 檔案解壓縮到同一個資料夾（不一定要全部科目，只匯入你需要的也可以），
+        點下方按鈕後，在檔案選擇視窗裡<b>選取你要匯入的 .json 檔案</b>（可一次選多個）。<br>
+        只需要匯入這一次，之後資料會保存在這個 artifact 裡，重新打開不用再匯入。</p>
+        ${errorMsg ? `<p class="import-error">匯入失敗：${errorMsg}</p>` : ''}
+        <label class="import-file-btn">
+          選擇資料檔（可一次選多個 .json）
+          <input type="file" id="importFileInput" accept="application/json" multiple style="display:none;">
+        </label>
+        <div class="import-progress-wrap" id="importProgressWrap" style="display:none;">
+          <div class="import-progress-bar-bg"><div class="import-progress-bar" id="importProgressBar"></div></div>
+          <div class="import-progress-label" id="importProgressLabel"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('importFileInput').addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []);
+    if(files.length === 0) return;
+    document.getElementById('importProgressWrap').style.display = 'block';
+    const label = document.getElementById('importProgressLabel');
+    try{
+      for(let i=0;i<files.length;i++){
+        const file = files[i];
+        const key = file.name.replace(/\.json$/i, '');
+        if(label) label.textContent = `讀取中… ${i+1} / ${files.length}（${file.name}）`;
+        const text = await file.text();
+        const lawObj = JSON.parse(text);
+        await saveOneLawToStorage(key, lawObj, i+1, files.length);
+      }
+      // Re-check storage for whatever subjects have been imported so far (no fixed
+      // list required — different people can import different combinations of subjects).
+      if(label) label.textContent = '確認資料完整性…';
+      const complete = await tryLoadDataFromStorage();
+      if(!complete){
+        const detail = lastStorageError ? `（底層錯誤：${lastStorageError.message || lastStorageError}）` : '';
+        showImportScreen(`沒有偵測到任何有效的科目資料，請確認選取的是正確的 .json 檔案${detail}`);
+        return;
+      }
+      DATA = complete;
+      startApp();
+    }catch(err){
+      showImportScreen(err.message || String(err));
+    }
+  });
+}
+
+function startApp(){
+  lawKeys = Object.keys(DATA);
+  currentLaw = lawKeys[0];
+  buildAppShell();
+  render();
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* fine if this fails, e.g. opened via file:// */ });
+  });
+}
+
+// ---------- Login screen (only used for the Firebase-backed build) ----------
+function showLoginScreen(errorMsg){
+  document.getElementById('appRoot').outerHTML = `
+    <div class="import-screen" id="appRoot">
+      <div class="import-card">
+        <div class="import-icon">⚖</div>
+        <h2>登入以同步你的資料</h2>
+        <p>用電子郵件＋密碼登入。第一次使用請按「註冊新帳號」；之後在任何裝置上，用同一組帳密登入，筆記就會自動同步。</p>
+        ${errorMsg ? `<p class="import-error">${escapeHtml(errorMsg)}</p>` : ''}
+        <input type="email" id="loginEmail" placeholder="電子郵件" class="login-input">
+        <input type="password" id="loginPassword" placeholder="密碼（至少6碼）" class="login-input">
+        <div class="login-btn-row">
+          <button id="loginBtn" class="import-file-btn login-btn">登入</button>
+          <button id="registerBtn" class="import-file-btn login-btn login-btn-secondary">註冊新帳號</button>
+        </div>
+        <div class="import-progress-label" id="loginStatusLabel"></div>
+      </div>
+    </div>
+  `;
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  const statusEl = document.getElementById('loginStatusLabel');
+
+  document.getElementById('loginBtn').addEventListener('click', async ()=>{
+    statusEl.textContent = '登入中…';
+    try{
+      await window.__firebase.signInWithEmailAndPassword(window.__firebase.auth, emailEl.value.trim(), passEl.value);
+      // onAuthStateChanged will pick this up and proceed automatically
+    }catch(err){
+      showLoginScreen(loginErrorMessage(err));
+    }
+  });
+  document.getElementById('registerBtn').addEventListener('click', async ()=>{
+    statusEl.textContent = '註冊中…';
+    try{
+      await window.__firebase.createUserWithEmailAndPassword(window.__firebase.auth, emailEl.value.trim(), passEl.value);
+    }catch(err){
+      showLoginScreen(loginErrorMessage(err));
+    }
+  });
+}
+
+function loginErrorMessage(err){
+  const code = err && err.code || '';
+  if(code.includes('invalid-email')) return '電子郵件格式不正確';
+  if(code.includes('email-already-in-use')) return '這個電子郵件已經註冊過了，請直接按「登入」';
+  if(code.includes('weak-password')) return '密碼太短，至少需要 6 碼';
+  if(code.includes('user-not-found') || code.includes('invalid-credential') || code.includes('wrong-password')) return '帳號或密碼不正確';
+  return '發生錯誤：' + (err && err.message || String(err));
+}
+
+// ---------- Decide which storage backend to use, then start the app ----------
+function waitForFirebaseModule(timeoutMs = 4000){
+  return new Promise((resolve)=>{
+    if(window.__firebase){ resolve(true); return; }
+    let done = false;
+    const finish = (ok)=>{
+      if(done) return;
+      done = true;
+      window.removeEventListener('firebase-ready', onReady);
+      window.removeEventListener('firebase-failed', onFailed);
+      resolve(ok);
+    };
+    const onReady = ()=> finish(true);
+    const onFailed = ()=> finish(false);
+    window.addEventListener('firebase-ready', onReady, { once:true });
+    window.addEventListener('firebase-failed', onFailed, { once:true });
+    setTimeout(()=> finish(!!window.__firebase), timeoutMs);
+  });
+}
+
+async function initStorageBackend(){
+  if(CLAUDE_STORAGE_AVAILABLE){
+    // window.storage already provided natively — nothing to do.
+    runBootstrap();
+    return;
+  }
+  // The Firebase SDK loads as an ES module, which executes slightly later than
+  // this classic script — wait briefly for it before deciding it's unavailable.
+  await waitForFirebaseModule();
+  if(window.__firebase){
+    const logoutBtn = document.getElementById('logoutBtn');
+    logoutBtn.style.display = 'block';
+    logoutBtn.addEventListener('click', async ()=>{
+      await window.__firebase.signOut(window.__firebase.auth);
+      location.reload();
+    });
+    window.__firebase.onAuthStateChanged(window.__firebase.auth, (user)=>{
+      if(user){
+        window.storage = makeFirestoreBackend(user.uid);
+        const badge = document.getElementById('accountBadge');
+        if(badge){
+          badge.style.display = 'flex';
+          badge.innerHTML = `<span class="acc-icon">👤</span><span>${escapeHtml(user.email || '已登入')}</span>`;
+        }
+        runBootstrap();
+      } else {
+        logoutBtn.style.display = 'none';
+        const badge = document.getElementById('accountBadge');
+        if(badge) badge.style.display = 'none';
+        showLoginScreen(null);
+      }
+    });
+    return;
+  }
+  window.storage = makeLocalStorageBackend();
+  runBootstrap();
+}
+
+async function runBootstrap(){
+  try{
+    const existing = await tryLoadDataFromStorage();
+    if(existing){
+      DATA = existing;
+      startApp();
+    } else {
+      showImportScreen(null);
+    }
+  }catch(err){
+    const root = document.getElementById('appRoot');
+    if(root){
+      root.innerHTML = `<div style="padding:40px;color:#9e2a2b;font-family:sans-serif;">
+        <b>啟動時發生錯誤：</b>${(err && err.message) || String(err)}
+      </div>`;
+    }
+  }
+}
+
+initStorageBackend();
+</script>
+</body>
+</html>

@@ -1331,20 +1331,50 @@ async function saveField(field, lawKey, no, value, taId){
 // ---------- Daily study-activity log ("which articles did I touch today") ----------
 const ACTIVITY_FIELD_LABELS = { note: '我的筆記', exam: '考題研究', answerCopy: '抄答案', originalText: '法條原文' };
 
-async function logActivity(lawKey, no, field){
+// Activity-log writes get the same reliability guarantee as note saves: a timeout so a
+// hung request can't block things forever, and an automatic retry queue so a failed
+// write (e.g. due to a network hiccup right as a draft got recovered) isn't silently
+// dropped — it keeps retrying every second until it actually succeeds, the same way
+// note content does.
+const pendingActivityLogs = {}; // "lawKey::no" -> {lawKey, no, field}
+let activityFlushInProgress = false;
+
+async function writeActivityLogEntry(lawKey, no, field){
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const key = `activitylog::${today}`;
+  let entries = {};
   try{
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, local UTC date is fine for a daily log
-    const key = `activitylog::${today}`;
-    let entries = {};
-    try{
-      const res = await window.storage.get(key, false);
-      if(res && res.value) entries = JSON.parse(res.value);
-    }catch(e){ /* no entry yet for today */ }
-    const lawTitle = (DATA[lawKey] && DATA[lawKey].title) || lawKey;
-    entries[`${lawKey}::${no}`] = { lawKey, no, lawTitle, field, time: Date.now() };
-    await window.storage.set(key, JSON.stringify(entries), false);
-  }catch(e){ /* logging is best-effort, never block the real save */ }
+    const res = await withTimeout(window.storage.get(key, false), 8000);
+    if(res && res.value) entries = JSON.parse(res.value);
+  }catch(e){ /* no entry yet for today, or a transient read failure — proceed with an empty base */ }
+  const lawTitle = (DATA[lawKey] && DATA[lawKey].title) || lawKey;
+  entries[`${lawKey}::${no}`] = { lawKey, no, lawTitle, field, time: Date.now() };
+  await withTimeout(window.storage.set(key, JSON.stringify(entries), false), 8000);
 }
+
+function logActivity(lawKey, no, field){
+  pendingActivityLogs[`${lawKey}::${no}`] = { lawKey, no, field };
+  flushPendingActivityLogs(); // try immediately; the interval below catches anything left over
+}
+
+async function flushPendingActivityLogs(){
+  if(activityFlushInProgress) return;
+  activityFlushInProgress = true;
+  try{
+    for(const id of Object.keys(pendingActivityLogs)){
+      const p = pendingActivityLogs[id];
+      try{
+        await writeActivityLogEntry(p.lawKey, p.no, p.field);
+        if(pendingActivityLogs[id] === p) delete pendingActivityLogs[id];
+      }catch(e){
+        // leave it queued — the next tick (or the interval below) will retry
+      }
+    }
+  } finally {
+    activityFlushInProgress = false;
+  }
+}
+setInterval(flushPendingActivityLogs, 1000);
 
 async function showActivityLogOverlay(){
   const overlay = document.getElementById('activityLogOverlay');

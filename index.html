@@ -3354,7 +3354,7 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${origBlockId}" data-manual-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到條文本身）">🖍 螢光筆</button>
         </div>
-        ${renderOriginalBlock(a.original, origBlockId, origOverride || (origTextOverride !== null && origTextOverride !== undefined ? origTextOverride : null))}
+        ${renderOriginalBlock(a.original, origBlockId, (origTextOverride !== null && origTextOverride !== undefined) ? origTextOverride : origOverride)}
       </div>`;
       })()}
       ${(()=>{
@@ -3397,7 +3397,7 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn highlighter-btn manual-highlight-btn" data-manual-target="${engBlockId}" data-manual-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" title="螢光筆劃線（不會改到內容本身）">🖍 螢光筆</button>
         </div>
-        ${renderEnglishBlock(a.english, engBlockId, engOverride || (engTextOverride !== null && engTextOverride !== undefined ? engTextOverride : null))}
+        ${renderEnglishBlock(a.english, engBlockId, (engTextOverride !== null && engTextOverride !== undefined) ? engTextOverride : engOverride)}
       </div>`;
       })()}
       <div class="block note-block">

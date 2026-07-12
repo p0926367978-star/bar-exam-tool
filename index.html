@@ -3592,6 +3592,10 @@ function renderCards(){
   document.querySelectorAll('[data-lock-field]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const field = btn.dataset.lockField, lawKey = btn.dataset.law, no = btn.dataset.no;
+      // if the person just typed and hit "鎖定" within the same second, the autosave
+      // interval may not have run yet — force it through now so the locked view shows
+      // what they actually just wrote, not stale/no data.
+      await flushPendingSaves();
       await setFieldLocked(field, lawKey, no, false);
       renderCards();
     });

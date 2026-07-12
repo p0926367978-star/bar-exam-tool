@@ -546,6 +546,11 @@
     border:1px solid var(--rule);border-radius:14px;padding:4px 10px;cursor:pointer;white-space:nowrap;
   }
   .reset-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
+  .lock-toggle-btn{
+    font-size:11px;color:var(--ink-soft);background:transparent;
+    border:1px solid var(--rule);border-radius:14px;padding:4px 10px;cursor:pointer;white-space:nowrap;
+  }
+  .lock-toggle-btn:hover{border-color:var(--seal-red-soft); color:var(--seal-red-soft);}
   .note-area.scrollable-original{
     max-height:420px;
     overflow-y:auto;
@@ -3330,7 +3335,7 @@ function renderCards(){
           <div class="note-actions">
             <span class="save-indicator" id="ind_${editId}"></span>
             <button class="reset-btn" data-field="originalText" data-reset="${editId}" data-default="${encodeURIComponent(seededOriginalText)}">↩ 回到上一步</button>
-            <button class="reset-btn" data-lock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖定</button>
+            <button class="lock-toggle-btn" data-lock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖定</button>
           </div>
         </div>
         <div class="note-toolbar">
@@ -3348,7 +3353,7 @@ function renderCards(){
           <div class="block-label">法條原文</div>
           <div class="note-actions">
             <button class="reset-btn" data-highlight-reset="1" data-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${origBlockId}">↩ 清除全部螢光</button>
-            <button class="reset-btn" data-unlock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">🔓 解鎖編輯</button>
+            <button class="lock-toggle-btn" data-unlock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">🔓 解鎖編輯</button>
           </div>
         </div>
         <div class="note-toolbar">
@@ -3373,7 +3378,7 @@ function renderCards(){
           <div class="note-actions">
             <span class="save-indicator" id="ind_${editId}"></span>
             <button class="reset-btn" data-field="englishText" data-reset="${editId}" data-default="${encodeURIComponent(seededEnglishText)}">↩ 回到上一步</button>
-            <button class="reset-btn" data-lock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖定</button>
+            <button class="lock-toggle-btn" data-lock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖定</button>
           </div>
         </div>
         <div class="note-toolbar">
@@ -3391,7 +3396,7 @@ function renderCards(){
           <div class="block-label">英文對照 · English</div>
           <div class="note-actions">
             <button class="reset-btn" data-highlight-reset="1" data-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${engBlockId}">↩ 清除全部螢光</button>
-            <button class="reset-btn" data-unlock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">🔓 解鎖編輯</button>
+            <button class="lock-toggle-btn" data-unlock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">🔓 解鎖編輯</button>
           </div>
         </div>
         <div class="note-toolbar">

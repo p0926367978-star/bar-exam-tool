@@ -1152,6 +1152,12 @@ const LAW_KEYS_EXPECTED = ["civil","foreign","civpro","securities","company","cr
 let DATA = {};
 let lawKeys = [];
 let currentLaw = null;
+// Once the user confirms "yes, let me edit this official text" for a given
+// (lawKey::no::field), it stays unlocked for the rest of this browser session so they
+// aren't asked again on every re-render — but a fresh page load always starts locked
+// again, which is the point of requiring confirmation in the first place.
+const unlockedEditFields = new Set();
+function unlockKey(lawKey, no, field){ return `${lawKey}::${no}::${field}`; }
 let currentChapter = "all";
 let currentQuery = "";
 let testedFilter = "all";
@@ -1160,7 +1166,7 @@ let currentRange = null; // { startNo, endNo, label }
 
 const testedCache = {};
 const testedLoaded = {};
-const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, origHighlight: {}, engHighlight: {} };   // field -> lawKey -> { [no]: overriddenValue }
+const fieldCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, englishText: {}, origHighlight: {}, engHighlight: {} };   // field -> lawKey -> { [no]: overriddenValue }
 const EDITABLE_ORIGINAL_LAWS = ["justiceinterp", "concourtjudg"];
 const UNCLASSIFIED_IMG_NO = "（整體筆記）"; // sentinel "no" for unclassified-note images, never collides with a real article no
 const fieldLoaded = { note: {}, exam: {} };
@@ -1286,7 +1292,7 @@ function clearLocalDraft(field, lawKey, no){
   try{ localStorage.removeItem(localDraftKey(field, lawKey, no)); }catch(e){}
 }
 
-const previousValueCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {} };
+const previousValueCache = { note: {}, exam: {}, unclassified: {}, answerCopy: {}, originalText: {}, englishText: {} };
 function getUndoValue(field, lawKey, no, fallback){
   const c = previousValueCache[field] && previousValueCache[field][lawKey];
   if(c && Object.prototype.hasOwnProperty.call(c, no)) return c[no];
@@ -3019,6 +3025,8 @@ function render(){
     ensureTestedLoaded(loadingLaw),
     ensureFieldLoaded('note', loadingLaw),
     ensureFieldLoaded('answerCopy', loadingLaw),
+    ensureFieldLoaded('originalText', loadingLaw),
+    ensureFieldLoaded('englishText', loadingLaw),
     ensureFieldLoaded('origHighlight', loadingLaw),
     ensureFieldLoaded('engHighlight', loadingLaw),
     ensureFieldLoaded('exam', loadingLaw),
@@ -3262,12 +3270,38 @@ function renderCards(){
       })() : (()=>{
         const origBlockId = `origblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
         const origOverride = getFieldValue('origHighlight', currentLaw, a.no, null);
+        const origTextOverride = getFieldValue('originalText', currentLaw, a.no, null);
+        const unlocked = unlockedEditFields.has(unlockKey(currentLaw, a.no, 'originalText')) || (origTextOverride !== null && origTextOverride !== undefined);
+        if(unlocked){
+          const seededOriginalText = (a.original || []).join('\n\n');
+          const editVal = origTextOverride !== null && origTextOverride !== undefined ? origTextOverride : seededOriginalText;
+          const editId = `origedit_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+          return `
+      <div class="block original">
+        <div class="note-head">
+          <div class="block-label">法條原文（編輯模式）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${editId}"></span>
+            <button class="reset-btn" data-field="originalText" data-reset="${editId}" data-default="${encodeURIComponent(seededOriginalText)}">↩ 回到上一步</button>
+            <button class="reset-btn" data-lock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖回唯讀</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
+        </div>
+        <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${editId}" data-law="${currentLaw}" data-no="${a.no}">${toEditableHtml(editVal)}</div>
+      </div>`;
+        }
         return `
       <div class="block original">
         <div class="note-head">
           <div class="block-label">法條原文</div>
           <div class="note-actions">
             <button class="reset-btn" data-highlight-reset="1" data-field="origHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${origBlockId}">↩ 清除全部螢光</button>
+            <button class="reset-btn" data-unlock-field="originalText" data-law="${currentLaw}" data-no="${a.no}">✏️ 編輯</button>
           </div>
         </div>
         <div class="note-toolbar">
@@ -3279,12 +3313,38 @@ function renderCards(){
       ${(()=>{
         const engBlockId = `engblock_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
         const engOverride = getFieldValue('engHighlight', currentLaw, a.no, null);
+        const engTextOverride = getFieldValue('englishText', currentLaw, a.no, null);
+        const unlockedEng = unlockedEditFields.has(unlockKey(currentLaw, a.no, 'englishText')) || (engTextOverride !== null && engTextOverride !== undefined);
+        if(unlockedEng){
+          const seededEnglishText = (a.english || []).join('\n\n');
+          const editVal = engTextOverride !== null && engTextOverride !== undefined ? engTextOverride : seededEnglishText;
+          const editId = `engedit_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
+          return `
+      <div class="block english">
+        <div class="note-head">
+          <div class="block-label">英文對照 · English（編輯模式）</div>
+          <div class="note-actions">
+            <span class="save-indicator" id="ind_${editId}"></span>
+            <button class="reset-btn" data-field="englishText" data-reset="${editId}" data-default="${encodeURIComponent(seededEnglishText)}">↩ 回到上一步</button>
+            <button class="reset-btn" data-lock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">🔒 鎖回唯讀</button>
+          </div>
+        </div>
+        <div class="note-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
+          <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
+          <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
+        </div>
+        <div class="note-area scrollable-original" contenteditable="true" data-field="englishText" id="${editId}" data-law="${currentLaw}" data-no="${a.no}">${toEditableHtml(editVal)}</div>
+      </div>`;
+        }
         return `
       <div class="block english">
         <div class="note-head">
           <div class="block-label">英文對照 · English</div>
           <div class="note-actions">
             <button class="reset-btn" data-highlight-reset="1" data-field="engHighlight" data-law="${currentLaw}" data-no="${a.no}" data-target-block="${engBlockId}">↩ 清除全部螢光</button>
+            <button class="reset-btn" data-unlock-field="englishText" data-law="${currentLaw}" data-no="${a.no}">✏️ 編輯</button>
           </div>
         </div>
         <div class="note-toolbar">
@@ -3460,6 +3520,29 @@ function renderCards(){
       if(!confirm('確定要清除這個區塊裡全部的螢光筆標記嗎？（不會影響文字內容）')) return;
       const field = btn.dataset.field, lawKey = btn.dataset.law, no = btn.dataset.no, blockId = btn.dataset.targetBlock;
       await saveField(field, lawKey, no, '', `ind_manualhl_${cssSafe(lawKey)}_${cssSafe(no)}_${field}`);
+      renderCards();
+    });
+  });
+
+  document.querySelectorAll('[data-unlock-field]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const field = btn.dataset.unlockField, lawKey = btn.dataset.law, no = btn.dataset.no;
+      const fieldLabel = field === 'originalText' ? '法條原文' : '英文對照';
+      const ok = confirm(
+        `這是官方的${fieldLabel}內容，正常情況下應該保持原樣。\n\n` +
+        `確定要開啟編輯嗎？開啟後你可以自行修改這裡的文字，修改的內容只會存在你自己的帳號裡，不會影響其他人看到的原文，也不會回傳、上傳到任何地方。\n\n` +
+        `如果你只是想標記重點，不需要編輯，建議改用旁邊的「🖍 螢光筆」就好，不用開這個。`
+      );
+      if(!ok) return;
+      unlockedEditFields.add(unlockKey(lawKey, no, field));
+      renderCards();
+    });
+  });
+
+  document.querySelectorAll('[data-lock-field]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const field = btn.dataset.lockField, lawKey = btn.dataset.law, no = btn.dataset.no;
+      unlockedEditFields.delete(unlockKey(lawKey, no, field));
       renderCards();
     });
   });

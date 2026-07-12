@@ -2290,8 +2290,49 @@ function htmlToText(html){
   return div.textContent || '';
 }
 
+// Same idea as htmlToText, but converts line-break-producing elements (<br>, block-level
+// tags from contenteditable's own line-break behavior) into literal "\n" characters
+// first, so multi-paragraph structure survives the HTML->text conversion.
+function htmlToTextPreserveBreaks(html){
+  if(!html) return '';
+  const withMarkers = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p)>/gi, '\n')
+    .replace(/<(div|p)[^>]*>/gi, '');
+  const div = document.createElement('div');
+  div.innerHTML = withMarkers;
+  return (div.textContent || '').replace(/\n{3,}/g, '\n\n');
+}
+
+function makeSeededParagraphText(paragraphs){
+  const arr = paragraphs || [];
+  if(arr.length <= 1) return arr.join('');
+  // multi-paragraph articles get a visible "第N項" marker per paragraph so the person
+  // can see (and, if they're careful, keep) the item structure while editing; the
+  // render step below looks for exactly this pattern to restore the numbered layout.
+  return arr.map((p, i)=> `第${i+1}項　${p}`).join('\n\n');
+}
+
+const PARA_MARKER_RE = /^第\s*([0-9]+)\s*項\s*(.*)$/s;
+
 function renderOriginalBlock(paragraphs, blockId, overrideHtml){
   if(overrideHtml){
+    // If the edited text still follows the "第N項　..." markers it was seeded with,
+    // rebuild the same numbered-paragraph layout the un-edited view uses, instead of
+    // collapsing everything into one flat block and losing the 項 structure.
+    const plain = htmlToTextPreserveBreaks(overrideHtml);
+    const blocks = plain.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+    if(blocks.length > 1 && blocks.every(b => PARA_MARKER_RE.test(b))){
+      const rows = blocks.map(b=>{
+        const m = b.match(PARA_MARKER_RE);
+        return `
+    <div class="law-para-row">
+      <span class="law-para-num">${escapeHtml(m[1])}</span>
+      <span class="law-para-text">${escapeHtml(m[2]).replace(/\n/g,'<br>')}</span>
+    </div>`;
+      }).join('');
+      return `<div class="law-article-block" id="${blockId}">${rows}</div>`;
+    }
     return `<div class="law-article-block single" id="${blockId}"><div class="law-para-text">${overrideHtml}</div></div>`;
   }
   if(!paragraphs || paragraphs.length === 0) return '';
@@ -3267,7 +3308,7 @@ function renderCards(){
     const examVal = getFieldValue('exam', currentLaw, a.no, a.exam || '');
     const examSeeded = !!(a.exam && a.exam.trim());
     const editableOriginal = EDITABLE_ORIGINAL_LAWS.includes(currentLaw);
-    const seededOriginalText = (a.original || []).join('\n\n');
+    const seededOriginalText = makeSeededParagraphText(a.original);
     const origVal = editableOriginal ? getFieldValue('originalText', currentLaw, a.no, seededOriginalText) : '';
     card.innerHTML = `
       <div class="card-top">
@@ -3325,7 +3366,7 @@ function renderCards(){
         const origTextOverride = getFieldValue('originalText', currentLaw, a.no, null);
         const unlocked = isFieldUnlocked('originalText', currentLaw, a.no);
         if(unlocked){
-          const seededOriginalText = (a.original || []).join('\n\n');
+          const seededOriginalText = makeSeededParagraphText(a.original);
           const editVal = origTextOverride !== null && origTextOverride !== undefined ? origTextOverride : seededOriginalText;
           const editId = `origedit_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
           return `
@@ -3368,7 +3409,7 @@ function renderCards(){
         const engTextOverride = getFieldValue('englishText', currentLaw, a.no, null);
         const unlockedEng = isFieldUnlocked('englishText', currentLaw, a.no);
         if(unlockedEng){
-          const seededEnglishText = (a.english || []).join('\n\n');
+          const seededEnglishText = makeSeededParagraphText(a.english);
           const editVal = engTextOverride !== null && engTextOverride !== undefined ? engTextOverride : seededEnglishText;
           const editId = `engedit_${cssSafe(currentLaw)}_${cssSafe(a.no)}`;
           return `

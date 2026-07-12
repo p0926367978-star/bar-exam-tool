@@ -2292,7 +2292,7 @@ function htmlToText(html){
 
 function renderOriginalBlock(paragraphs, blockId, overrideHtml){
   if(overrideHtml){
-    return `<div class="law-article-block" id="${blockId}">${overrideHtml}</div>`;
+    return `<div class="law-article-block single" id="${blockId}"><div class="law-para-text">${overrideHtml}</div></div>`;
   }
   if(!paragraphs || paragraphs.length === 0) return '';
   if(paragraphs.length === 1){
@@ -2308,7 +2308,7 @@ function renderOriginalBlock(paragraphs, blockId, overrideHtml){
 
 function renderEnglishBlock(paragraphs, blockId, overrideHtml){
   if(overrideHtml){
-    return `<div class="english-block" id="${blockId}">${overrideHtml}</div>`;
+    return `<div class="english-block" id="${blockId}"><div class="eng-para">${overrideHtml}</div></div>`;
   }
   if(!paragraphs || paragraphs.length === 0){
     return `<div class="english-block empty" id="${blockId}">尚無英文對照，你可以自行補上，或請我之後協助整理。</div>`;

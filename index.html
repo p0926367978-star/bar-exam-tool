@@ -621,6 +621,9 @@
     color:#a89f8c;
   }
   .note-area ul{margin:0; padding-left:22px;}
+  .note-area ol{margin:0; padding-left:22px;}
+  .note-area ol ol{padding-left:20px; margin-top:2px; list-style-type:lower-alpha;}
+  .note-area ol ol ol{list-style-type:lower-roman;}
   .note-area ul ul{padding-left:20px; margin-top:2px;}
   .note-area ul ul{list-style-type:circle;}
   .note-area ul ul ul{list-style-type:square;}
@@ -2174,6 +2177,30 @@ function wireFmtButtons(root){
         cleanFormattingSelectionOrAll(target);
         return;
       }
+      if(btn.classList.contains('add-para-btn')){
+        target.focus();
+        // figure out the next sequential 第N項 number from whatever markers already
+        // exist in the field (works whether it currently has 0, 1, or many items)
+        const plainNow = htmlToTextPreserveBreaks(target.innerHTML);
+        const existingBlocks = plainNow.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+        let nextNum = existingBlocks.length + 1;
+        const nums = existingBlocks.map(b=>{ const m = b.match(PARA_MARKER_RE); return m ? parseInt(m[1],10) : null; }).filter(n=>n!==null);
+        if(nums.length > 0) nextNum = Math.max(...nums) + 1;
+        // if the field isn't empty and doesn't already end with a blank line, add one
+        // (via two <br>) before the new numbered block so it stays a separate 項
+        const needsBreakBefore = target.innerHTML.trim().length > 0;
+        const newBlockHtml = (needsBreakBefore ? '<br><br>' : '') + `第${nextNum}項　`;
+        // insert at the end of the field, then place the cursor right after "第N項　"
+        target.innerHTML += newBlockHtml;
+        const range = document.createRange();
+        const sel2 = window.getSelection();
+        range.selectNodeContents(target);
+        range.collapse(false);
+        sel2.removeAllRanges();
+        sel2.addRange(range);
+        target.dispatchEvent(new Event('input', {bubbles:true}));
+        return;
+      }
       target.focus();
       const cmd = btn.dataset.cmd;
       try{
@@ -2394,6 +2421,7 @@ function buildAppShell(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="unclassified_ta" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="unclassified_ta" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3352,6 +3380,7 @@ function renderCards(){
         </div>
         <div class="pdf-upload-row">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${origId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3381,9 +3410,11 @@ function renderCards(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
+          <button type="button" class="fmt-btn add-para-btn" data-target="${editId}" title="在最後面自動加上一個正確編號的新項次">➕ 新增一項</button>
         </div>
         <div class="note-area scrollable-original" contenteditable="true" data-field="originalText" id="${editId}" data-law="${currentLaw}" data-no="${a.no}">${toEditableHtml(editVal)}</div>
       </div>`;
@@ -3424,9 +3455,11 @@ function renderCards(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
+          <button type="button" class="fmt-btn add-para-btn" data-target="${editId}" title="在最後面自動加上一個正確編號的新項次">➕ 新增一項</button>
         </div>
         <div class="note-area scrollable-original" contenteditable="true" data-field="englishText" id="${editId}" data-law="${currentLaw}" data-no="${a.no}">${toEditableHtml(editVal)}</div>
       </div>`;
@@ -3456,6 +3489,7 @@ function renderCards(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${noteId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${noteId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3473,6 +3507,7 @@ function renderCards(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${answerId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${answerId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3490,6 +3525,7 @@ function renderCards(){
         </div>
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${examId}" title="項目符號清單">• 分點</button>
+          <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${examId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>

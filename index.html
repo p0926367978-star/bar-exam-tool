@@ -624,6 +624,23 @@
   .note-area ol{margin:0; padding-left:22px;}
   .note-area ol ol{padding-left:20px; margin-top:2px; list-style-type:lower-alpha;}
   .note-area ol ol ol{list-style-type:lower-roman;}
+  .note-area table.note-table{
+    border-collapse:collapse;
+    width:100%;
+    margin:8px 0;
+    font-size:14px;
+  }
+  .note-area table.note-table th, .note-area table.note-table td{
+    border:1px solid var(--rule);
+    padding:6px 10px;
+    text-align:left;
+    vertical-align:top;
+  }
+  .note-area table.note-table th{
+    background:var(--page-cream-2);
+    font-weight:700;
+    color:var(--ink-soft);
+  }
   .note-area ul ul{padding-left:20px; margin-top:2px;}
   .note-area ul ul{list-style-type:circle;}
   .note-area ul ul ul{list-style-type:square;}
@@ -2201,19 +2218,48 @@ function wireFmtButtons(root){
         target.dispatchEvent(new Event('input', {bubbles:true}));
         return;
       }
+      if(btn.classList.contains('table-insert-btn')){
+        target.focus();
+        const rowsStr = prompt('要插入幾列（橫的，不含標題列）？', '2');
+        if(rowsStr === null) return;
+        const colsStr = prompt('要插入幾欄（直的）？', '3');
+        if(colsStr === null) return;
+        const rows = Math.max(1, Math.min(20, parseInt(rowsStr, 10) || 2));
+        const cols = Math.max(1, Math.min(10, parseInt(colsStr, 10) || 3));
+        let html = '<table class="note-table"><tbody><tr>';
+        for(let c=0;c<cols;c++) html += `<th>標題${c+1}</th>`;
+        html += '</tr>';
+        for(let r=0;r<rows;r++){
+          html += '<tr>';
+          for(let c=0;c<cols;c++) html += '<td>&nbsp;</td>';
+          html += '</tr>';
+        }
+        html += '</tbody></table><br>';
+        try{ document.execCommand('insertHTML', false, html); }catch(e){}
+        target.dispatchEvent(new Event('input', {bubbles:true}));
+        return;
+      }
       target.focus();
       const cmd = btn.dataset.cmd;
       try{
         if(cmd === 'createLink'){
           const sel = window.getSelection();
           const hasSelection = sel && sel.toString().trim().length > 0;
-          let url = prompt(hasSelection ? '請輸入這段文字要連結的網址：' : '請輸入網址（會直接插入為連結文字）：', 'https://');
+          let url = prompt('請輸入網址：', 'https://');
           if(!url) return;
           if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+          let label;
+          if(hasSelection){
+            label = sel.toString();
+          } else {
+            label = prompt('這個連結要顯示什麼文字？（可以自己取一個簡短的名稱，不用整串網址）', url);
+            if(label === null) return;
+            if(!label.trim()) label = url;
+          }
           if(hasSelection){
             document.execCommand('createLink', false, url);
           } else {
-            document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+            document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`);
           }
         } else {
           document.execCommand(cmd, false, null);
@@ -2422,6 +2468,8 @@ function buildAppShell(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="unclassified_ta" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="unclassified_ta" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="unclassified_ta" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="unclassified_ta" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3381,6 +3429,8 @@ function renderCards(){
         <div class="pdf-upload-row">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${origId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${origId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${origId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${origId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3411,6 +3461,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${editId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${editId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
@@ -3456,6 +3508,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${editId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${editId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${editId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
@@ -3490,6 +3544,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${noteId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${noteId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${noteId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${noteId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3508,6 +3564,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${answerId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${answerId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${answerId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${answerId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3526,6 +3584,8 @@ function renderCards(){
         <div class="note-toolbar">
           <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" data-target="${examId}" title="項目符號清單">• 分點</button>
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${examId}" title="數字編號清單">1. 數字</button>
+          <button type="button" class="fmt-btn" data-cmd="bold" data-target="${examId}" title="粗體"><b>B</b> 粗體</button>
+          <button type="button" class="fmt-btn table-insert-btn" data-target="${examId}" title="插入表格">📊 表格</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>

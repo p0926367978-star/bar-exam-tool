@@ -635,6 +635,9 @@
     padding:6px 10px;
     text-align:left;
     vertical-align:top;
+    resize:horizontal;
+    overflow:auto;
+    min-width:40px;
   }
   .note-area table.note-table th{
     background:var(--page-cream-2);
@@ -1922,6 +1925,22 @@ function cleanFormattingSelectionOrAll(root){
   root.dispatchEvent(new Event('input', {bubbles:true}));
 }
 
+// Find the table the cursor is currently inside; if the cursor isn't inside any table
+// (or nothing is selected), fall back to the last table in the field — the most likely
+// one the person means when they click "加一列/加一欄" right after working on a table.
+function findTableForEdit(root){
+  const sel = window.getSelection();
+  if(sel && sel.rangeCount > 0){
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    while(node && node !== root){
+      if(node.nodeName === 'TABLE') return node;
+      node = node.parentNode;
+    }
+  }
+  const tables = root.querySelectorAll('table.note-table');
+  return tables.length > 0 ? tables[tables.length - 1] : null;
+}
+
 function findEnclosingLi(node, boundary){
   while(node && node !== boundary){
     if(node.nodeName === 'LI') return node;
@@ -2239,6 +2258,29 @@ function wireFmtButtons(root){
         target.dispatchEvent(new Event('input', {bubbles:true}));
         return;
       }
+      if(btn.classList.contains('table-addrow-btn') || btn.classList.contains('table-addcol-btn')){
+        const tbl = findTableForEdit(target);
+        if(!tbl){ alert('先把游標點進一個表格裡面，再按這個按鈕（或者這個欄位裡目前沒有任何表格）'); return; }
+        const trs = Array.from(tbl.querySelectorAll('tr'));
+        if(btn.classList.contains('table-addrow-btn')){
+          const colCount = trs[0] ? trs[0].children.length : 1;
+          const tr = document.createElement('tr');
+          for(let c=0;c<colCount;c++){
+            const td = document.createElement('td');
+            td.innerHTML = '&nbsp;';
+            tr.appendChild(td);
+          }
+          tbl.querySelector('tbody') ? tbl.querySelector('tbody').appendChild(tr) : tbl.appendChild(tr);
+        } else {
+          trs.forEach((tr, i)=>{
+            const cell = document.createElement(i === 0 ? 'th' : 'td');
+            cell.innerHTML = i === 0 ? `標題${tr.children.length+1}` : '&nbsp;';
+            tr.appendChild(cell);
+          });
+        }
+        target.dispatchEvent(new Event('input', {bubbles:true}));
+        return;
+      }
       target.focus();
       const cmd = btn.dataset.cmd;
       try{
@@ -2470,6 +2512,8 @@ function buildAppShell(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="unclassified_ta" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="unclassified_ta" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="unclassified_ta" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="unclassified_ta" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="unclassified_ta" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="unclassified_ta" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="unclassified_ta" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="unclassified_ta" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3431,6 +3475,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${origId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${origId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${origId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${origId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${origId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${origId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${origId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${origId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3463,6 +3509,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${editId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${editId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${editId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${editId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
@@ -3510,6 +3558,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${editId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${editId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${editId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${editId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${editId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${editId}" title="刪除線">S 刪除線</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${editId}" title="螢光筆劃線">🖍 螢光筆</button>
           <button type="button" class="fmt-btn clean-fmt-btn" data-target="${editId}" title="清除格式">🧹 清除格式</button>
@@ -3546,6 +3596,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${noteId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${noteId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${noteId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${noteId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${noteId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${noteId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${noteId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${noteId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3566,6 +3618,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${answerId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${answerId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${answerId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${answerId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${answerId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${answerId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${answerId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${answerId}" title="螢光筆劃線">🖍 螢光筆</button>
@@ -3586,6 +3640,8 @@ function renderCards(){
           <button type="button" class="fmt-btn" data-cmd="insertOrderedList" data-target="${examId}" title="數字編號清單">1. 數字</button>
           <button type="button" class="fmt-btn" data-cmd="bold" data-target="${examId}" title="粗體"><b>B</b> 粗體</button>
           <button type="button" class="fmt-btn table-insert-btn" data-target="${examId}" title="插入表格">📊 表格</button>
+          <button type="button" class="fmt-btn table-addrow-btn" data-target="${examId}" title="在游標所在的表格加一列">➕ 加一列</button>
+          <button type="button" class="fmt-btn table-addcol-btn" data-target="${examId}" title="在游標所在的表格加一欄">➕ 加一欄</button>
           <button type="button" class="fmt-btn strike-btn" data-cmd="strikeThrough" data-target="${examId}" title="刪除線（標記已學會，不刪除文字）">S 刪除線</button>
           <button type="button" class="fmt-btn" data-cmd="createLink" data-target="${examId}" title="插入超連結">🔗 連結</button>
           <button type="button" class="fmt-btn highlighter-btn" data-target="${examId}" title="螢光筆劃線">🖍 螢光筆</button>

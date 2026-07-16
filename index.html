@@ -1316,13 +1316,33 @@ function recoverLocalDrafts(field, lawKey){
   for(const k of keys){
     if(!k.startsWith(prefix)) continue;
     const no = k.slice(prefix.length);
-    let draftValue;
-    try{ draftValue = localStorage.getItem(k); }catch(e){ continue; }
-    if(draftValue === null) continue;
+    let raw;
+    try{ raw = localStorage.getItem(k); }catch(e){ continue; }
+    if(raw === null) continue;
+    let parsed;
+    try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; }
+    // drafts saved before this format existed (plain string, no baseline) have no way
+    // to verify they're still valid — discard rather than risk overwriting real content.
+    if(!parsed || typeof parsed.value !== 'string' || typeof parsed.baseline !== 'string'){
+      try{ localStorage.removeItem(k); }catch(e){}
+      continue;
+    }
+    const draftValue = parsed.value;
     const savedValue = fieldCache[field][lawKey][no];
     if(savedValue === draftValue) { clearLocalDraft(field, lawKey, no); continue; } // already in sync, clean up
-    // draft differs from (or is missing from) what's in Firestore — the draft wins,
-    // since it represents the most recent thing actually typed
+    // The key correctness check: does Firestore's CURRENT value still match what it was
+    // right when this draft was written? If yes, nobody has successfully saved anything
+    // for this field since — no matter how long ago that was — so the draft still
+    // represents the most recent thing actually typed, and is safe to restore. If the
+    // current value has since changed to something else, a real save happened after this
+    // draft was created (through this session or another), so the draft is stale and
+    // must NOT be allowed to clobber it, regardless of how "recent" its timestamp is.
+    const fallbackForMissing = ''; // fieldCache may have no entry at all if this is a brand-new field
+    const currentSaved = savedValue !== undefined ? savedValue : fallbackForMissing;
+    if(currentSaved !== parsed.baseline){
+      clearLocalDraft(field, lawKey, no);
+      continue;
+    }
     fieldCache[field][lawKey][no] = draftValue;
     saveField(field, lawKey, no, draftValue, null); // best-effort immediate re-save; clears the draft on success
   }
@@ -1367,14 +1387,23 @@ function getFieldValue(field, lawKey, no, fallback){
 // only ever have existed in memory and would be gone for good. The draft is cleared once
 // the real save to Firestore actually succeeds, and is automatically offered back on load
 // if a saved draft is ever found without a matching successful save.
+//
+// Each draft is stored with a timestamp. Recovery only trusts drafts written recently —
+// an old, never-cleaned-up draft sitting in localStorage from days/weeks ago must NOT be
+// allowed to silently overwrite content that was since correctly saved and re-edited.
 const LOCAL_DRAFT_PREFIX = 'localdraft::';
 function localDraftKey(field, lawKey, no){ return `${LOCAL_DRAFT_PREFIX}${field}::${lawKey}::${no}`; }
 
-function saveLocalDraft(field, lawKey, no, value){
-  try{ localStorage.setItem(localDraftKey(field, lawKey, no), value); }catch(e){ /* storage full/unavailable — best effort only */ }
+function saveLocalDraft(field, lawKey, no, value, baseline){
+  try{ localStorage.setItem(localDraftKey(field, lawKey, no), JSON.stringify({ value, baseline, ts: Date.now() })); }catch(e){ /* storage full/unavailable — best effort only */ }
 }
 function getLocalDraft(field, lawKey, no){
-  try{ return localStorage.getItem(localDraftKey(field, lawKey, no)); }catch(e){ return null; }
+  try{
+    const raw = localStorage.getItem(localDraftKey(field, lawKey, no));
+    if(raw === null) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.value === 'string' ? parsed.value : null;
+  }catch(e){ return null; }
 }
 function clearLocalDraft(field, lawKey, no){
   try{ localStorage.removeItem(localDraftKey(field, lawKey, no)); }catch(e){}
@@ -1550,7 +1579,10 @@ const retryDelays = {};  // taId -> current backoff (ms), for gentle retry backo
 function queueSave(field, lawKey, no, value, taId){
   pendingSaves[taId] = { field, lawKey, no, value };
   delete retryDelays[taId]; // a fresh edit resets any backoff
-  saveLocalDraft(field, lawKey, no, value); // instant, network-independent backup
+  // snapshot what this field's value was right before this edit — used later to tell a
+  // genuinely still-unsaved draft apart from a stale leftover one (see recoverLocalDrafts)
+  const baseline = getFieldValue(field, lawKey, no, '');
+  saveLocalDraft(field, lawKey, no, value, baseline); // instant, network-independent backup
   showSaving(taId, 'saving');
 }
 

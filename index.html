@@ -306,6 +306,31 @@
     border-bottom:1px dashed var(--seal-red-soft);
   }
   .source-link:hover{color:var(--seal-red-soft);}
+  .last-position-banner{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:12px;
+    padding:8px 14px;
+    background:rgba(212,175,106,0.12);
+    border:1px solid rgba(212,175,106,0.35);
+    border-radius:8px;
+    font-size:13px;
+    color:var(--ink-soft);
+    width:fit-content;
+  }
+  .last-position-jump-btn{
+    font-size:12px;
+    font-weight:700;
+    color:#fff;
+    background:var(--gold);
+    border:none;
+    border-radius:14px;
+    padding:4px 12px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .last-position-jump-btn:hover{background:var(--gold-bright);}
   .add-entry-btn{
     display:inline-block;
     margin-top:12px;
@@ -1202,6 +1227,56 @@ let lawSearchQuery = "";
 let currentRange = null; // { startNo, endNo, label }
 
 const testedCache = {};
+
+// ---------- "上次學習到哪裡" — remembers the last article you were actively working on
+// per subject, so reopening a subject doesn't leave you hunting for where you left off.
+const LAST_POSITION_PREFIX = 'lastposition::';
+const lastPositionCache = {}; // lawKey -> no
+async function setLastPosition(lawKey, no){
+  if(lastPositionCache[lawKey] === no) return; // avoid redundant writes while lingering on the same card
+  lastPositionCache[lawKey] = no;
+  try{ await window.storage.set(LAST_POSITION_PREFIX + lawKey, no, false); }catch(e){}
+}
+async function ensureLastPositionLoaded(lawKey){
+  if(Object.prototype.hasOwnProperty.call(lastPositionCache, lawKey)) return;
+  try{
+    const res = await window.storage.get(LAST_POSITION_PREFIX + lawKey, false);
+    if(res && typeof res.value === 'string') lastPositionCache[lawKey] = res.value;
+  }catch(e){}
+}
+function updateLastPositionBanner(lawKey){
+  const banner = document.getElementById('lastPositionBanner');
+  if(!banner) return;
+  const no = lastPositionCache[lawKey];
+  if(!no || !DATA[lawKey] || !DATA[lawKey].articles.some(a=>a.no===no)){
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'flex';
+  banner.innerHTML = `<span>📍 上次學習到：${escapeHtml(no)}</span><button id="lastPositionJumpBtn" class="last-position-jump-btn">跳過去看看</button>`;
+  document.getElementById('lastPositionJumpBtn').addEventListener('click', ()=>{
+    jumpToCard(lawKey, no);
+  });
+}
+// Shared by both the activity log and the "上次學習到" banner: reset any active filter so
+// the target card is guaranteed to be in the rendered list, then scroll to and flash it.
+function jumpToCard(lawKey, no){
+  currentLaw = lawKey;
+  currentChapter = 'all';
+  currentRange = null;
+  currentQuery = '';
+  const si = document.getElementById('searchInput');
+  if(si) si.value = '';
+  render();
+  setTimeout(()=>{
+    const cardEl = document.getElementById(`card_${cssSafe(lawKey)}_${cssSafe(no)}`);
+    if(cardEl){
+      cardEl.scrollIntoView({behavior:'smooth', block:'center'});
+      cardEl.classList.add('card-jump-highlight');
+      setTimeout(()=> cardEl.classList.remove('card-jump-highlight'), 2200);
+    }
+  }, 80);
+}
 const testedLoaded = {};
 
 // ---------- Simple persistent lock/unlock toggle for editable 法條原文／英文對照 ----------
@@ -1930,14 +2005,18 @@ function cleanFormatting(root){
     }
 
     if(node.hasAttribute('style')){
-      // Any element carrying a background-color is treated as a highlight mark and
-      // preserved — this covers both our own manual .user-highlight spans AND the
-      // plain <span style="background-color:...​"> the browser's native highlighter
-      // command (execCommand hiliteColor) produces, which has no distinguishing class.
+      // Only a span our own highlighter tool actually created (marked with data-hl, or
+      // the older .user-highlight class from the manual read-only-block highlighter) is
+      // treated as a highlight worth preserving. Any other background-color — most often
+      // arriving via paste from an external page's own styling — is just incidental
+      // clutter and gets stripped along with everything else.
+      const isRealHighlight = node.hasAttribute('data-hl') || (node.classList && node.classList.contains('user-highlight'));
       const bg = node.style.backgroundColor;
       node.removeAttribute('style');
-      if(bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)'){
+      if(isRealHighlight && bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)'){
         node.style.backgroundColor = bg;
+      } else {
+        node.removeAttribute('data-hl');
       }
     }
     // strip presentational attributes some paste sources leave behind
@@ -2288,6 +2367,19 @@ function applyHighlight(colorOrNull){
   if(!highlighterTarget) return;
   highlighterTarget.focus();
   try{ document.execCommand('hiliteColor', false, colorOrNull || 'transparent'); }catch(e){}
+  // Mark whatever span(s) hiliteColor just created as a genuine tool-made highlight, so
+  // "清除格式" can tell these apart from unrelated background-color styling that arrived
+  // via paste from an external page (e.g. a website's own table/header shading) — only
+  // spans carrying this marker are treated as highlights worth protecting; anything else
+  // with a background-color is just incidental styling and gets stripped.
+  highlighterTarget.querySelectorAll('[style*="background-color"]').forEach(el=>{
+    const bg = el.style.backgroundColor;
+    if(bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)'){
+      el.setAttribute('data-hl', '1');
+    } else {
+      el.removeAttribute('data-hl');
+    }
+  });
   highlighterTarget.dispatchEvent(new Event('input', {bubbles:true}));
   document.getElementById('highlighterPopover').style.display = 'none';
 }
@@ -2597,6 +2689,7 @@ function buildAppShell(){
       <h1 id="lawTitle">法規名稱</h1>
       <p class="law-desc" id="lawDesc">說明</p>
       <a class="source-link" href="https://law.moj.gov.tw/Index.aspx" target="_blank" rel="noopener">法源查證：全國法規資料庫 law.moj.gov.tw ↗</a>
+      <div id="lastPositionBanner" class="last-position-banner" style="display:none;"></div>
       <button id="printBtn" class="add-entry-btn print-btn">🖨 列印／匯出PDF</button>
       <button id="addEntryBtn" class="add-entry-btn" style="display:none;">➕ 新增一則</button>
     </div>
@@ -3351,6 +3444,7 @@ function render(){
     ensureFieldLoaded('englishText', loadingLaw),
     ensureLockStateLoaded('originalText', loadingLaw),
     ensureLockStateLoaded('englishText', loadingLaw),
+    ensureLastPositionLoaded(loadingLaw),
     ensureFieldLoaded('origHighlight', loadingLaw),
     ensureFieldLoaded('engHighlight', loadingLaw),
     ensureFieldLoaded('exam', loadingLaw),
@@ -3360,6 +3454,7 @@ function render(){
   ]).then(()=>{
     if(currentLaw !== loadingLaw) return;
     renderCards();
+    updateLastPositionBanner(loadingLaw);
     const imgsRow = document.getElementById('imgs_unclassified');
     if(imgsRow){
       imgsRow.innerHTML = thumbsHtml(loadingLaw, UNCLASSIFIED_IMG_NO);
@@ -3941,6 +4036,12 @@ function renderCards(){
     ta.addEventListener('input', ()=>{
       queueSave(ta.dataset.field, ta.dataset.law, ta.dataset.no, ta.innerHTML, ta.id);
     });
+    if(ta.dataset.no){
+      ta.addEventListener('focus', ()=>{
+        setLastPosition(ta.dataset.law, ta.dataset.no);
+        updateLastPositionBanner(ta.dataset.law);
+      });
+    }
   });
 
   list.querySelectorAll('.reset-btn').forEach(btn=>{
